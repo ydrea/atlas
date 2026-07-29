@@ -1,56 +1,84 @@
-# Welcome to your Expo app 👋
+# AR Compass Beta
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An augmented reality view for exploring points of interest with intuitive bidirectional gesture controls.
 
-## Get started
+## 🖐️ Gesture Controls (Two-Finger)
 
-1. Install dependencies
+| Gesture              | Direction   | Effect                     | Result                                   |
+| -------------------- | ----------- | -------------------------- | ---------------------------------------- |
+| **Top finger**       | ⬆️ UP       | MAX distance **INCREASES** | See further away                         |
+| **Top finger**       | ⬇️ DOWN     | MAX distance **DECREASES** | See less far                             |
+| **Bottom finger**    | ⬆️ UP       | MIN distance **INCREASES** | Can't see as close (near clip moves out) |
+| **Bottom finger**    | ⬇️ DOWN     | MIN distance **DECREASES** | Can see closer objects                   |
+| **Both fingers**     | ↕️ APART    | Camera Zoom **IN**         | Closer view                              |
+| **Both fingers**     | ↕️ TOGETHER | Camera Zoom **OUT**        | Wider view                               |
+| **Horizontal pinch** | ↔️ SPREAD   | FOV **INCREASES**          | See more (wider)                         |
+| **Horizontal pinch** | ↔️ PINCH    | FOV **DECREASES**          | See less (narrower)                      |
 
-   ```bash
-   npm install
-   ```
+## 🎯 Visual Feedback
 
-2. Start the app
+### POI Indicators
 
-   ```bash
-   npx expo start
-   ```
+| Indicator           | Location  | Meaning                                |
+| ------------------- | --------- | -------------------------------------- |
+| **White label**     | On screen | POI is visible with name + distance    |
+| **White triangle**  | On edge   | POI is offscreen → Turn this way       |
+| **Yellow triangle** | At top    | POI is too far (beyond max distance)   |
+| **Blue triangle**   | At bottom | POI is too close (within min distance) |
 
-In the output, you'll find options to open the app in a
+### Distance-Based Styling
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Opacity**: Farther = more transparent (0.2 → 1.0)
+- **Font Size**: Farther = smaller text (8px → 16px)
+- **Triangle Size**: Farther = smaller indicator (6px → 14px)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📊 Top HUD Display
 
-## Get a fresh project
+| Element     | Description                       |
+| ----------- | --------------------------------- |
+| **MIN**     | Current minimum distance (green)  |
+| **BEARING** | Average direction of visible POIs |
+| **MAX**     | Current maximum distance (blue)   |
+| **FOV**     | Current field of view in degrees  |
 
-When you're ready, run:
+## 🔄 Quick Reset
 
-```bash
-npm run reset-project
-```
+Tap the **↺** button to reset:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- MIN distance to default (30m)
+- MAX distance to default (5000m)
+- Camera zoom to wide (0)
+- FOV to default (60°)
 
-### Other setup steps
+## 🎮 Gesture Logic
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+The gesture controller intelligently detects which finger is moving:
 
-## Learn more
+1. **Top finger moves** → Adjust MAX distance
+2. **Bottom finger moves** → Adjust MIN distance
+3. **Both fingers move** → Camera zoom
+4. **Horizontal pinch** → FOV control
 
-To learn more about developing your project with Expo, look at the following resources:
+Each gesture works BOTH ways for full control:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- UP/SPREAD = increase
+- DOWN/PINCH = decrease
 
-## Join the community
+## 🛠 Technical Notes
 
-Join our community of developers creating universal apps.
+- Uses device motion sensors for orientation tracking
+- GPS for user position
+- Real-time perspective projection
+- Rubber band effect at gesture limits
+- Spring animations for smooth feedback
+- Distance clipping uses true radial distance (not camera-plane depth)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📱 Beta Status
+
+- Works best outdoors with clear GPS signal
+- POIs are pre-configured for testing
+- Sensor fusion for stable orientation
+- Min/Max distance gestures independent
+
+- Sensor fusion for stable orientation
+- Min/Max distance gestures independent

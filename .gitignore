@@ -1,5 +1,12 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
+.apk
+apk/
+BCK/
+admin/
+samples/
+credentials/
+futur_worklets/gestures/*.*
+credentials.json
 # dependencies
 node_modules/
 
@@ -11,6 +18,7 @@ expo-env.d.ts
 
 # Native
 .kotlin/
+modules/cumquat-native/build/
 *.orig.*
 *.jks
 *.p8
@@ -36,8 +44,13 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-example
+app-example
 
 # generated native folders
 /ios
 /android
+
+credentials.json
+credentials/
+*.jks
+*.keystore

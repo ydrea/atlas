@@ -1,0 +1,63 @@
+name: Production verification
+
+on:
+  pull_request:
+    branches:
+      - testsDEBUG
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Reject runtime logging calls
+        shell: bash
+        run: |
+          : > production-log-audit.txt
+          roots=(app components contexts cumquat data hooks modules ui utils)
+          existing=()
+          for root in "${roots[@]}"; do
+            [[ -e "$root" ]] && existing+=("$root")
+          done
+
+          if ((${#existing[@]})); then
+            git grep -nE \
+              'console\.(log|warn|error)|\b(Tlog|Slog|Rlog|Plog|Elog|Dlog|PlogPerf)[[:space:]]*\(|std::(cout|cerr)|(^|[^[:alnum:]_])(printf|fprintf)[[:space:]]*\(|__android_log|\bLOG[DIWEF][[:space:]]*\(' \
+              -- "${existing[@]}" \
+              ':!**/__tests__/**' \
+              ':!**/*.test.*' \
+              ':!**/build/**' \
+              > production-log-audit.txt || true
+          fi
+
+          cat production-log-audit.txt
+          test ! -s production-log-audit.txt
+
+      - name: Type-check active app graph
+        run: npx tsc --noEmit
+
+      - name: Run Jest
+        run: npm test -- --runInBand
+
+      - name: Configure native tests
+        run: cmake -S modules/cumquat-native -B modules/cumquat-native/build -DCUMQUAT_BUILD_TESTS=ON
+
+      - name: Build native tests
+        run: cmake --build modules/cumquat-native/build
+
+      - name: Run native tests
+        run: ctest --test-dir modules/cumquat-native/build --output-on-failure

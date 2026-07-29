@@ -1,0 +1,116 @@
+name: iOS Simulator Build
+
+on:
+  push:
+    branches:
+      - iOS
+      - iOSprod
+  pull_request:
+    branches:
+      - iOS
+      - iOSprod
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-simulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-simulator:
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Show Apple toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --runInBand
+
+      - name: Generate iOS project
+        env:
+          EAS_BUILD_PROFILE: preview
+        run: npx expo prebuild --clean --platform ios --no-install
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Find Xcode workspace and application scheme
+        id: ios
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)"
+
+          if [[ -z "$workspace" ]]; then
+            echo "No Xcode workspace found under ios/" >&2
+            exit 1
+          fi
+
+          scheme="$(
+            xcodebuild \
+              -workspace "$workspace" \
+              -list \
+              -json |
+            ruby -rjson -e '
+              data = JSON.parse(STDIN.read)
+              schemes = data.dig("workspace", "schemes") || []
+              scheme = schemes.find { |name| !name.start_with?("Pods-") }
+              abort "No application scheme found" unless scheme
+              puts scheme
+            '
+          )"
+
+          echo "workspace=$workspace" >> "$GITHUB_OUTPUT"
+          echo "scheme=$scheme" >> "$GITHUB_OUTPUT"
+          echo "Workspace: $workspace"
+          echo "Scheme: $scheme"
+
+      - name: Compile unsigned iOS Simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+
+          xcodebuild \
+            -workspace "${{ steps.ios.outputs.workspace }}" \
+            -scheme "${{ steps.ios.outputs.scheme }}" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ios-derived-data \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build 2>&1 | tee xcodebuild.log
+
+      - name: Upload Xcode build log
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-simulator-xcodebuild-log
+          path: xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 7
