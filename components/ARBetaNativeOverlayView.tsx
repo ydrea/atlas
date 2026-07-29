@@ -50,7 +50,15 @@ const DATASET_RADIUS_METERS = AR_CONSTANTS.DISTANCE.MAX;
 const POSITION_COMMIT_THRESHOLD_PX = 1.5;
 const DISTANCE_COMMIT_THRESHOLD_METERS = 2;
 const LABEL_WIDTH = 170;
+const LABEL_HEIGHT = 58;
+const LABEL_COLLISION_PADDING = 8;
+const MAX_VISIBLE_LABELS = 8;
+const MAX_EDGE_INDICATORS = 10;
+const EDGE_INDICATOR_SPACING = 28;
 const EDGE_MARGIN = 28;
+const DEFAULT_OVERLAY_TOP_INSET = 76;
+const HUD_SAFE_GAP = 12;
+const OVERLAY_BOTTOM_INSET = 28;
 
 type Viewport = {
   width: number;
@@ -94,6 +102,19 @@ type IndicatorPlacement = {
   y: number;
   angle: number;
   color: string;
+};
+
+type LabelPlacement = {
+  poi: RenderPOI;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+type OverlayLayout = {
+  labels: LabelPlacement[];
+  indicators: IndicatorPlacement[];
 };
 
 const DEFAULT_GESTURE_STATE: GestureState = {
@@ -281,10 +302,81 @@ function formatDistance(distance: number): string {
     : `${(distance / 1000).toFixed(1)}km`;
 }
 
-function classifyIndicator(poi: RenderPOI): IndicatorKind | null {
+function isDebugPOI(poi: SourcePOI): boolean {
+  return poi.id === 999 || poi.name.trim().toUpperCase() === "TEST";
+}
+
+function selectVisibleLabels(
+  pois: readonly RenderPOI[],
+  viewport: Viewport,
+  topInset: number,
+): LabelPlacement[] {
+  const placements: LabelPlacement[] = [];
+  const maxY = viewport.height - OVERLAY_BOTTOM_INSET;
+  const verticalStep = LABEL_HEIGHT + LABEL_COLLISION_PADDING;
+  const verticalOffsets = [
+    0,
+    -verticalStep,
+    verticalStep,
+    -verticalStep * 2,
+    verticalStep * 2,
+    -verticalStep * 3,
+    verticalStep * 3,
+  ];
+
+  for (const poi of [...pois].sort(
+    (left, right) => left.distance - right.distance,
+  )) {
+    if (placements.length >= MAX_VISIBLE_LABELS) break;
+
+    const left = Math.max(
+      EDGE_MARGIN,
+      Math.min(
+        viewport.width - EDGE_MARGIN - LABEL_WIDTH,
+        poi.screenPos.x - LABEL_WIDTH / 2,
+      ),
+    );
+    const anchorTop = poi.screenPos.y - 32;
+
+    for (const offset of verticalOffsets) {
+      const top = anchorTop + offset;
+      const placement: LabelPlacement = {
+        poi,
+        left,
+        top,
+        right: left + LABEL_WIDTH,
+        bottom: top + LABEL_HEIGHT,
+      };
+
+      if (placement.top < topInset || placement.bottom > maxY) {
+        continue;
+      }
+
+      const overlaps = placements.some(
+        (existing) =>
+          placement.left < existing.right + LABEL_COLLISION_PADDING &&
+          placement.right > existing.left - LABEL_COLLISION_PADDING &&
+          placement.top < existing.bottom + LABEL_COLLISION_PADDING &&
+          placement.bottom > existing.top - LABEL_COLLISION_PADDING,
+      );
+
+      if (!overlaps) {
+        placements.push(placement);
+        break;
+      }
+    }
+  }
+
+  return placements;
+}
+
+function classifyIndicator(
+  poi: RenderPOI,
+  rejectedByLabelLayout: boolean,
+): IndicatorKind | null {
   if (poi.screenPos.clippedByDistance === "max") return "too-far";
   if (poi.screenPos.clippedByDistance === "min") return "too-close";
-  if (poi.isOffscreen) return "offscreen";
+  if (poi.isOffscreen || rejectedByLabelLayout) return "offscreen";
   return null;
 }
 
@@ -292,6 +384,7 @@ function getIndicatorPlacement(
   poi: RenderPOI,
   viewport: Viewport,
   kind: IndicatorKind,
+  topInset: number,
 ): IndicatorPlacement {
   const centerX = viewport.width / 2;
   const centerY = viewport.height / 2;
@@ -306,19 +399,19 @@ function getIndicatorPlacement(
     dy = -1;
   }
 
-  const angle = Math.atan2(dy, dx);
+  const sourceAngle = Math.atan2(dy, dx);
   const horizontalPosition = Math.max(
     EDGE_MARGIN,
     Math.min(
       viewport.width - EDGE_MARGIN,
-      centerX + Math.cos(angle) * (viewport.width / 2 - EDGE_MARGIN),
+      centerX + Math.cos(sourceAngle) * (viewport.width / 2 - EDGE_MARGIN),
     ),
   );
 
   if (kind === "too-far") {
     return {
       x: horizontalPosition,
-      y: EDGE_MARGIN,
+      y: topInset,
       angle: -Math.PI / 2,
       color: "rgba(255, 190, 80, 0.95)",
     };
@@ -327,33 +420,89 @@ function getIndicatorPlacement(
   if (kind === "too-close") {
     return {
       x: horizontalPosition,
-      y: viewport.height - EDGE_MARGIN,
+      y: viewport.height - OVERLAY_BOTTOM_INSET,
       angle: Math.PI / 2,
       color: "rgba(80, 190, 255, 0.95)",
     };
   }
 
+  const safeTop = topInset;
+  const safeBottom = viewport.height - OVERLAY_BOTTOM_INSET;
+  const safeCenterY = (safeTop + safeBottom) / 2;
   const availableX = viewport.width / 2 - EDGE_MARGIN;
-  const availableY = viewport.height / 2 - EDGE_MARGIN;
+  const availableTop = safeCenterY - safeTop;
+  const availableBottom = safeBottom - safeCenterY;
+  dy += centerY - safeCenterY;
   const scaleX =
     Math.abs(dx) > 0.001 ? availableX / Math.abs(dx) : Number.POSITIVE_INFINITY;
+  const availableY = dy < 0 ? availableTop : availableBottom;
   const scaleY =
     Math.abs(dy) > 0.001 ? availableY / Math.abs(dy) : Number.POSITIVE_INFINITY;
   const scale = Math.min(scaleX, scaleY);
+  const edgeAngle = Math.atan2(dy, dx);
 
   return {
     x: centerX + dx * scale,
-    y: centerY + dy * scale,
-    angle,
+    y: safeCenterY + dy * scale,
+    angle: edgeAngle,
     color: "rgba(255, 255, 255, 0.92)",
   };
 }
 
+function selectEdgeIndicators(
+  pois: readonly RenderPOI[],
+  viewport: Viewport,
+  labelIds: ReadonlySet<number>,
+  topInset: number,
+): IndicatorPlacement[] {
+  const selected: IndicatorPlacement[] = [];
+
+  for (const poi of [...pois].sort(
+    (left, right) => left.distance - right.distance,
+  )) {
+    if (selected.length >= MAX_EDGE_INDICATORS) break;
+    if (labelIds.has(poi.id)) continue;
+
+    const kind = classifyIndicator(poi, poi.isVisible);
+    if (!kind) continue;
+
+    const placement = getIndicatorPlacement(poi, viewport, kind, topInset);
+    const overlaps = selected.some(
+      (existing) =>
+        Math.hypot(placement.x - existing.x, placement.y - existing.y) <
+        EDGE_INDICATOR_SPACING,
+    );
+
+    if (!overlaps) selected.push(placement);
+  }
+
+  return selected;
+}
+
+function layoutOverlay(
+  pois: readonly RenderPOI[],
+  viewport: Viewport,
+  topInset: number,
+): OverlayLayout {
+  const labels = selectVisibleLabels(
+    pois.filter((poi) => poi.isVisible),
+    viewport,
+    topInset,
+  );
+  const labelIds = new Set(labels.map(({ poi }) => poi.id));
+
+  return {
+    labels,
+    indicators: selectEdgeIndicators(pois, viewport, labelIds, topInset),
+  };
+}
+
 const VisiblePOIMarker = memo(function VisiblePOIMarker({
-  poi,
+  placement,
 }: {
-  poi: RenderPOI;
+  placement: LabelPlacement;
 }) {
+  const { poi, left, top } = placement;
   const { x, y } = poi.screenPos;
   const distanceRatio = Math.min(1, poi.distance / 2000);
   const opacity = Math.max(0.6, 1 - distanceRatio * 0.5);
@@ -367,8 +516,8 @@ const VisiblePOIMarker = memo(function VisiblePOIMarker({
         style={[
           styles.poiName,
           {
-            left: x - LABEL_WIDTH / 2,
-            top: y - 30,
+            left,
+            top,
             fontSize,
             opacity,
           },
@@ -384,10 +533,7 @@ const VisiblePOIMarker = memo(function VisiblePOIMarker({
 
       <Text
         pointerEvents="none"
-        style={[
-          styles.poiDistance,
-          { left: x - LABEL_WIDTH / 2, top: y + 10, opacity },
-        ]}
+        style={[styles.poiDistance, { left, top: top + 40, opacity }]}
       >
         {formatDistance(poi.distance)}
       </Text>
@@ -403,6 +549,7 @@ const EdgeTriangle = memo(function EdgeTriangle({
   return (
     <View
       pointerEvents="none"
+      testID="edge-indicator"
       style={[
         styles.edgeTriangle,
         {
@@ -434,6 +581,10 @@ export default function ARBetaNativeOverlayView() {
   const [activeLimit, setActiveLimit] = useState<LimitType | null>(null);
   const [rubberBandIntensity, setRubberBandIntensity] = useState(0);
   const [isReady, setIsReady] = useState(false);
+  const [deviceHeading, setDeviceHeading] = useState(0);
+  const [overlayTopInset, setOverlayTopInset] = useState(
+    DEFAULT_OVERLAY_TOP_INSET,
+  );
 
   const nativeEngineRef = useRef<NativeEngine | null>(null);
   const nativeDisabledRef = useRef(false);
@@ -477,6 +628,11 @@ export default function ARBetaNativeOverlayView() {
 
     viewportRef.current = next;
     setViewport(next);
+  }, []);
+
+  const handleHUDLayout = useCallback((event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    setOverlayTopInset(Math.ceil(y + height + HUD_SAFE_GAP));
   }, []);
 
   const disposeNativeEngine = useCallback(() => {
@@ -530,6 +686,8 @@ export default function ARBetaNativeOverlayView() {
   const renderSnapshot = useCallback(
     (snapshot: SensorSnapshot) => {
       if (pois.length === 0) return;
+
+      setDeviceHeading(normalizeAngle(snapshot.heading));
 
       const currentViewport = viewportRef.current;
 
@@ -642,11 +800,13 @@ export default function ARBetaNativeOverlayView() {
       .then((loadedPOIs) => {
         if (cancelled) return;
 
-        if (loadedPOIs.length === 0) {
+        const productionPOIs = loadedPOIs.filter((poi) => !isDebugPOI(poi));
+
+        if (productionPOIs.length === 0) {
           throw new Error("POI binary contains no records");
         }
 
-        setPOIs(loadedPOIs);
+        setPOIs(productionPOIs);
         setPOILoadError(null);
       })
       .catch((error: unknown) => {
@@ -697,19 +857,10 @@ export default function ARBetaNativeOverlayView() {
     return () => clearInterval(interval);
   }, [isReady, pois.length, renderSnapshot]);
 
-  const visiblePOIs = useMemo(
-    () => projectedPOIs.filter((poi) => poi.isVisible),
-    [projectedPOIs],
+  const overlayLayout = useMemo(
+    () => layoutOverlay(projectedPOIs, viewport, overlayTopInset),
+    [overlayTopInset, projectedPOIs, viewport],
   );
-
-  const averageBearing = useMemo(() => {
-    if (visiblePOIs.length === 0) return 0;
-
-    return normalizeAngle(
-      visiblePOIs.reduce((sum, poi) => sum + poi.bearing, 0) /
-        visiblePOIs.length,
-    );
-  }, [visiblePOIs]);
 
   return (
     <GestureDetector gesture={pinchGesture}>
@@ -728,78 +879,68 @@ export default function ARBetaNativeOverlayView() {
           renderToHardwareTextureAndroid
           collapsable={false}
         >
-          <Text style={styles.poiCounter}>
-            POIs: {visiblePOIs.length} visible / {projectedPOIs.length} active ·{" "}
-            {poiLoadError
-              ? "data error"
-              : pois.length === 0
-                ? "loading data"
-                : engineMode === "native"
-                  ? "C++"
-                  : engineMode}
-          </Text>
+          <View
+            testID="poi-hud"
+            style={styles.poiHUD}
+            onLayout={handleHUDLayout}
+          >
+            <Text style={[styles.poiCounterLeft]}>
+              POIs: {overlayLayout.labels.length} visible /{" "}
+              {projectedPOIs.length} active
+            </Text>
 
+            <View style={styles.poiCounterGroup}>
+              <Text style={styles.poiCounterLabel}>MIN</Text>
+              <Text style={styles.poiCounterValue}>
+                {(minDistance / 1000).toFixed(1)}km
+              </Text>
+            </View>
+
+            <View style={styles.poiCounterGroup}>
+              <Text style={styles.poiCounterLabel}>BEARING</Text>
+              <Text style={styles.poiCounterValue}>
+                {Math.round(deviceHeading)}°
+              </Text>
+            </View>
+
+            <View style={styles.poiCounterGroup}>
+              <Text style={styles.poiCounterLabel}>MAX</Text>
+              <Text style={styles.poiCounterValue}>
+                {(maxDistance / 1000).toFixed(1)}km
+              </Text>
+            </View>
+
+            <View style={styles.poiCounterGroup}>
+              <Text style={styles.poiCounterLabel}>FOV</Text>
+              <Text style={styles.poiCounterValue}>{Math.round(fov)}°</Text>
+            </View>
+          </View>
           {poiLoadError ? (
             <Text style={styles.poiLoadError}>
               Failed to load POIs: {poiLoadError.message}
             </Text>
           ) : null}
-
-          {projectedPOIs.map((poi) => {
-            if (poi.isVisible) {
-              return <VisiblePOIMarker key={poi.id} poi={poi} />;
-            }
-            const kind = classifyIndicator(poi);
-            if (!kind) return null;
-
-            return (
-              <EdgeTriangle
-                key={poi.id}
-                placement={getIndicatorPlacement(poi, viewport, kind)}
-              />
-            );
-          })}
-
-          <View style={styles.reticle}>
-            <View style={styles.reticleDot} />
-          </View>
-
-          <RubberBandVisualFeedback
-            isActive={isRubberBanding && activeLimit !== "fov"}
-            limitType={activeLimit === "fov" ? null : activeLimit}
-            intensity={rubberBandIntensity}
-          />
-
-          <View style={styles.topHUD}>
-            <View style={styles.hudCell}>
-              <Text style={styles.hudLabel}>MIN</Text>
-              <Text style={[styles.hudValue, { color: "#4CAF50" }]}>
-                {(minDistance / 1000).toFixed(1)}km
-              </Text>
-            </View>
-
-            <View style={styles.hudCell}>
-              <Text style={styles.hudLabel}>BEARING</Text>
-              <Text style={[styles.hudValue, { color: "#00BCD4" }]}>
-                {Math.round(averageBearing)}°
-              </Text>
-            </View>
-
-            <View style={styles.hudCell}>
-              <Text style={styles.hudLabel}>MAX</Text>
-              <Text style={[styles.hudValue, { color: "#2196F3" }]}>
-                {(maxDistance / 1000).toFixed(1)}km
-              </Text>
-            </View>
-
-            <View style={styles.hudCell}>
-              <Text style={styles.hudLabel}>FOV</Text>
-              <Text style={[styles.hudValue, { color: "#FFC107" }]}>
-                {Math.round(fov)}°
-              </Text>
-            </View>
-          </View>
         </View>
+        {overlayLayout.labels.map((placement) => (
+          <VisiblePOIMarker key={placement.poi.id} placement={placement} />
+        ))}
+
+        {overlayLayout.indicators.map((placement, index) => (
+          <EdgeTriangle
+            key={`${placement.x}:${placement.y}:${index}`}
+            placement={placement}
+          />
+        ))}
+
+        <View style={styles.reticle}>
+          <View style={styles.reticleDot} />
+        </View>
+
+        <RubberBandVisualFeedback
+          isActive={isRubberBanding && activeLimit !== "fov"}
+          limitType={activeLimit === "fov" ? null : activeLimit}
+          intensity={rubberBandIntensity}
+        />
 
         <View style={styles.controls}>
           <TouchableOpacity
@@ -828,16 +969,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
-  poiCounter: {
+  poiHUD: {
     position: "absolute",
+    top: 5,
     left: 10,
-    top: 10,
+    right: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  poiCounterGroup: {
+    alignItems: "center",
+    flex: 1,
+  },
+  poiCounterLabel: {
+    fontSize: 8,
+    color: "rgba(255,255,255,0.5)",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  poiCounterValue: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "white",
+    marginTop: 1,
+  },
+  poiCounterLeft: {
+    fontSize: 12,
+    fontWeight: "600",
     color: "rgba(255,255,255,0.9)",
-    fontSize: 14,
-    fontWeight: "700",
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1,
+    flex: 2,
   },
   poiLoadError: {
     position: "absolute",
@@ -909,10 +1076,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "rgba(0, 255, 255, 0.8)",
   },
-  topHUD: {
-    opacity: 0.75,
+  overHUD: {
+    // opacity: 0.75,
     position: "absolute",
-    bottom: 55,
+    top: 5,
     left: 12,
     right: 12,
     flexDirection: "row",
@@ -965,3 +1132,4 @@ const styles = StyleSheet.create({
     display: "none",
   },
 });
+

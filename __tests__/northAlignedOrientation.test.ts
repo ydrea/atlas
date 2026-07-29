@@ -10,20 +10,28 @@ jest.mock("@/cumquat/sensors", () => ({
 
 import {sensorHub} from "@/cumquat/sensors";
 import {
-  createNorthAlignedCameraQuaternion,
+  cameraForwardBearing,
+  createProjectionOrientation,
   installNorthAlignedOrientation,
 } from "@/cumquat/northAlignedOrientation";
+
+const NORTH_FACING_ORIENTATION: Quat = {
+  x: -Math.SQRT1_2,
+  y: 0,
+  z: 0,
+  w: Math.SQRT1_2,
+};
 
 const rawSnapshot: SensorSnapshot = {
   lat: 45.8,
   lon: 15.96,
   elevation: 120,
-  orientation: {x: 0, y: 0, z: 0, w: 1},
-  screenOrientationDegrees: -90,
-  heading: 0,
+  orientation: NORTH_FACING_ORIENTATION,
+  screenOrientationDegrees: 0,
+  heading: 217,
   headingAccuracy: 3,
-  magneticHeading: 350,
-  trueHeading: 0,
+  magneticHeading: 217,
+  trueHeading: 217,
   timestamp: 1,
 };
 
@@ -43,13 +51,22 @@ function rotateVector(v: Vec3, q: Quat): Vec3 {
   };
 }
 
-function expectVectorClose(actual: Vec3, expected: Vec3): void {
-  expect(actual.x).toBeCloseTo(expected.x, 10);
-  expect(actual.y).toBeCloseTo(expected.y, 10);
-  expect(actual.z).toBeCloseTo(expected.z, 10);
+function orientationAtBearing(bearing: number): Quat {
+  const halfRadians = (bearing * Math.PI) / 360;
+  return {
+    x: -Math.SQRT1_2 * Math.cos(halfRadians),
+    y: Math.SQRT1_2 * Math.sin(halfRadians),
+    z: Math.SQRT1_2 * Math.sin(halfRadians),
+    w: Math.SQRT1_2 * Math.cos(halfRadians),
+  };
 }
 
-describe("north-aligned camera quaternion", () => {
+function expectBearing(actual: number | null, expected: number): void {
+  expect(actual).not.toBeNull();
+  expect(actual as number).toBeCloseTo(expected, 10);
+}
+
+describe("DeviceMotion-only projection orientation", () => {
   beforeEach(() => {
     rawGetSnapshot.mockReturnValue({
       ...rawSnapshot,
@@ -57,112 +74,67 @@ describe("north-aligned camera quaternion", () => {
     });
   });
 
-  test("uses live left-landscape orientation", () => {
-    const orientation = createNorthAlignedCameraQuaternion(
-      {x: 0, y: 0, z: 0, w: 1},
-      -90,
+  test.each([
+    [0, 0],
+    [30, 330],
+    [90, 270],
+    [180, 180],
+    [270, 90],
+  ])("negates DeviceMotion bearing %s to %s", (motion, projected) => {
+    const orientation = createProjectionOrientation(
+      orientationAtBearing(motion),
       0,
-      null,
+      -1,
     );
 
-    expectVectorClose(rotateVector({x: 1, y: 0, z: 0}, orientation), {
-      x: 0,
-      y: 1,
-      z: 0,
-    });
+    expectBearing(cameraForwardBearing(orientation), projected);
   });
 
-  test("uses live right-landscape orientation", () => {
-    const orientation = createNorthAlignedCameraQuaternion(
-      {x: 0, y: 0, z: 0, w: 1},
-      90,
+  test("keeps DeviceMotion yaw when configured with +1", () => {
+    const orientation = createProjectionOrientation(
+      orientationAtBearing(30),
       0,
-      null,
+      1,
     );
 
-    expectVectorClose(rotateVector({x: 1, y: 0, z: 0}, orientation), {
-      x: 0,
-      y: -1,
-      z: 0,
-    });
+    expectBearing(cameraForwardBearing(orientation), 30);
   });
 
-  test("fuses true-minus-magnetic declination into the quaternion", () => {
-    const orientation = createNorthAlignedCameraQuaternion(
-      {x: 0, y: 0, z: 0, w: 1},
-      0,
-      350,
-      0,
-    );
+  test("yaw correction preserves the pitch/roll up transform", () => {
+    const source = {
+      x: -0.6532814824,
+      y: 0.2705980501,
+      z: 0.2705980501,
+      w: 0.6532814824,
+    };
+    const corrected = createProjectionOrientation(source, 0, -1);
 
-    const tenDegrees = (10 * Math.PI) / 180;
-    expectVectorClose(rotateVector({x: 1, y: 0, z: 0}, orientation), {
-      x: Math.cos(tenDegrees),
-      y: Math.sin(tenDegrees),
-      z: 0,
-    });
+    const sourceUp = rotateVector({x: 0, y: 0, z: 1}, source);
+    const correctedUp = rotateVector({x: 0, y: 0, z: 1}, corrected);
+
+    expect(correctedUp.x).toBeCloseTo(sourceUp.x, 10);
+    expect(correctedUp.y).toBeCloseTo(sourceUp.y, 10);
+    expect(correctedUp.z).toBeCloseTo(sourceUp.z, 10);
   });
 
-  test("does not invent a true-north correction when true heading is unavailable", () => {
-    const source = {x: 0.2, y: -0.3, z: 0.4, w: 0.842614977};
-    const orientation = createNorthAlignedCameraQuaternion(
-      source,
-      0,
-      278,
-      null,
-    );
-
-    const sourceLength = Math.hypot(source.x, source.y, source.z, source.w);
-    expect(orientation.x).toBeCloseTo(source.x / sourceLength, 10);
-    expect(orientation.y).toBeCloseTo(source.y / sourceLength, 10);
-    expect(orientation.z).toBeCloseTo(source.z / sourceLength, 10);
-    expect(orientation.w).toBeCloseTo(source.w / sourceLength, 10);
-  });
-
-  test("declination correction preserves the gravity/up transform", () => {
-    const source = {x: 0.2, y: -0.3, z: 0.4, w: 0.842614977};
-    const magnetic = createNorthAlignedCameraQuaternion(source, 0, 350, null);
-    const trueNorth = createNorthAlignedCameraQuaternion(source, 0, 350, 0);
-
-    expectVectorClose(
-      rotateVector({x: 0, y: 0, z: 1}, trueNorth),
-      rotateVector({x: 0, y: 0, z: 1}, magnetic),
-    );
-  });
-
-  test("always returns a unit quaternion", () => {
-    const orientation = createNorthAlignedCameraQuaternion(
-      {x: 2, y: -3, z: 4, w: 5},
-      -90,
-      355,
-      2,
-    );
-
-    expect(
-      Math.hypot(
-        orientation.x,
-        orientation.y,
-        orientation.z,
-        orientation.w,
-      ),
-    ).toBeCloseTo(1, 12);
-  });
-
-  test("installs fusion using the snapshot screen orientation", () => {
+  test("installed projection ignores every heading field", () => {
     installNorthAlignedOrientation();
 
-    const snapshot = sensorHub.getSnapshot();
-    const expected = createNorthAlignedCameraQuaternion(
-      rawSnapshot.orientation,
-      rawSnapshot.screenOrientationDegrees,
-      rawSnapshot.magneticHeading,
-      rawSnapshot.trueHeading,
-    );
+    const first = sensorHub.getSnapshot();
+    rawGetSnapshot.mockReturnValue({
+      ...rawSnapshot,
+      heading: 0,
+      magneticHeading: 359,
+      trueHeading: 1,
+      orientation: {...rawSnapshot.orientation},
+      timestamp: 2,
+    });
+    const second = sensorHub.getSnapshot();
 
-    expect(rawGetSnapshot).toHaveBeenCalledTimes(1);
-    expect(snapshot.orientation.x).toBeCloseTo(expected.x, 12);
-    expect(snapshot.orientation.y).toBeCloseTo(expected.y, 12);
-    expect(snapshot.orientation.z).toBeCloseTo(expected.z, 12);
-    expect(snapshot.orientation.w).toBeCloseTo(expected.w, 12);
+    expect(first.orientation).toEqual(second.orientation);
+    expect(first.heading).toBe(217);
+    expect(second.heading).toBe(0);
+    expectBearing(cameraForwardBearing(first.orientation), 0);
+    expectBearing(cameraForwardBearing(second.orientation), 0);
   });
 });

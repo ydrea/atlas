@@ -43,6 +43,13 @@ export const AR_CONSTANTS = {
     STEP: 10000, // 10km steps
   },
 
+  SENSOR: {
+    // DeviceMotion and geographic bearings use opposite yaw directions on
+    // the target Android device. Change only this value if field testing
+    // proves the convention is already correct.
+    PROJECTION_YAW_SIGN: -1,
+  },
+
   // UI settings
   UI: {
     MIN_GAP: 50,
