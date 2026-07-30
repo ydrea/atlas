@@ -18,7 +18,7 @@ import { GestureDetector } from "react-native-gesture-handler";
 import type { CameraType } from "expo-camera";
 
 import { AR_CONSTANTS } from "@/cumquat/constants";
-import { cameraForwardBearing } from "@/cumquat/northAlignedOrientation";
+import { cumquatCameraForwardBearing } from "@/cumquat/northAlignedOrientation";
 import {
   calculateBearing,
   geoToENU,
@@ -703,7 +703,7 @@ export default function ARBetaNativeOverlayView() {
 
       setDeviceHeading(normalizeAngle(snapshot.heading));
       fieldOrientationRef.current = {
-        physicalBearing: cameraForwardBearing(snapshot.orientation),
+        physicalBearing: cumquatCameraForwardBearing(snapshot.orientation),
         pitch: Number.isFinite(snapshot.pitchDegrees)
           ? snapshot.pitchDegrees
           : 0,
