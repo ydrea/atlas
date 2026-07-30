@@ -293,6 +293,22 @@ describe("beta ARView", () => {
     expect(initializedPOIs).toHaveLength(LARGE_DATASET_COUNT);
   });
 
+  test("renders every projected POI as either a label or an indicator", async () => {
+    await render(<ARView />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/36 active/)).toBeTruthy();
+    });
+
+    const renderedLabels = createMockPOIs(DEFAULT_POI_COUNT).filter((poi) =>
+      screen.queryByText(poi.name),
+    ).length;
+    const renderedIndicators =
+      screen.queryAllByTestId("edge-indicator").length;
+
+    expect(renderedLabels + renderedIndicators).toBe(DEFAULT_POI_COUNT);
+  });
+
   test("configures the new gesture hook with default state and camera zoom", async () => {
     await render(<ARView />);
 
