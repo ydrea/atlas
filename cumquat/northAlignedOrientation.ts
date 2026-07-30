@@ -72,6 +72,21 @@ function rotateVector(
   };
 }
 
+/**
+ * Diagnostic mirror of Cumquat's native Expo landscape basis conversion.
+ * Projection itself remains native; this exists only for field logging.
+ */
+export function cumquatCameraForwardBearing(
+  orientation: Quat,
+): number | null {
+  return cameraForwardBearing({
+    x: orientation.x,
+    y: -orientation.y,
+    z: -orientation.z,
+    w: orientation.w,
+  });
+}
+
 export function cameraForwardBearing(orientation: Quat): number | null {
   const normalized = normalizeQuaternion(orientation);
   const worldForward = rotateVector(
