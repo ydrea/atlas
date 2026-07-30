@@ -723,6 +723,12 @@ export default function ARBetaNativeOverlayView() {
               altitude: snapshot.elevation,
             },
             orientationQuaternion: snapshot.orientation,
+            // Cumquat consumes this only once, paired with this exact motion
+            // quaternion. Later compass readings remain HUD-only.
+            initialHeadingDegrees:
+              snapshot.headingAccuracy >= 2
+                ? normalizeAngle(snapshot.heading)
+                : undefined,
             headingDegrees: snapshot.heading,
             pitchDegrees: 0,
             rollDegrees: 0,
