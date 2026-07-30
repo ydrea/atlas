@@ -585,6 +585,9 @@ export default function ARBetaNativeOverlayView() {
 
   const fieldOrientationRef = useRef({
     physicalBearing: null as number | null,
+    rawQuaternion: null as SensorSnapshot["rawOrientation"],
+    projectionQuaternion: null as SensorSnapshot["rawOrientation"],
+    screenOrientation: 0,
     pitch: 0,
     roll: 0,
   });
@@ -692,6 +695,9 @@ export default function ARBetaNativeOverlayView() {
       setDeviceHeading(normalizeAngle(snapshot.heading));
       fieldOrientationRef.current = {
         physicalBearing: cumquatCameraForwardBearing(snapshot.orientation),
+        rawQuaternion: snapshot.rawOrientation,
+        projectionQuaternion: snapshot.orientation,
+        screenOrientation: snapshot.screenOrientationDegrees,
         pitch: Number.isFinite(snapshot.pitchDegrees)
           ? snapshot.pitchDegrees
           : 0,
@@ -877,7 +883,23 @@ export default function ARBetaNativeOverlayView() {
     const shownPOIs = overlayLayout.labels.map(
       (placement) => placement.poi.name,
     );
-    const { physicalBearing, pitch, roll } = fieldOrientationRef.current;
+    const {
+      physicalBearing,
+      rawQuaternion,
+      projectionQuaternion,
+      screenOrientation,
+      pitch,
+      roll,
+    } = fieldOrientationRef.current;
+    const formatQuaternion = (quaternion: typeof rawQuaternion) =>
+      quaternion
+        ? {
+            x: Number(quaternion.x.toFixed(6)),
+            y: Number(quaternion.y.toFixed(6)),
+            z: Number(quaternion.z.toFixed(6)),
+            w: Number(quaternion.w.toFixed(6)),
+          }
+        : null;
 
     Tlog("[AR FIELD]", {
       "physical direction":
@@ -887,6 +909,9 @@ export default function ARBetaNativeOverlayView() {
       pitch: `${pitch.toFixed(1)}°`,
       roll: `${roll.toFixed(1)}°`,
       "HUD bearing": `${deviceHeading.toFixed(1)}°`,
+      "screen orientation": screenOrientation,
+      "raw quaternion": formatQuaternion(rawQuaternion),
+      "Cumquat input quaternion": formatQuaternion(projectionQuaternion),
       "POIs shown": shownPOIs,
     });
   }, [deviceHeading, overlayLayout.labels]);
