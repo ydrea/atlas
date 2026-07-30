@@ -76,47 +76,39 @@ describe("DeviceMotion-only projection orientation", () => {
     });
   });
 
-  test.each([
-    [0, 0],
-    [30, 330],
-    [90, 270],
-    [180, 180],
-    [270, 90],
-  ])("negates DeviceMotion bearing %s to %s", (motion, projected) => {
-    const orientation = createProjectionOrientation(
-      orientationAtBearing(motion),
-      0,
-      -1,
-    );
+  test("keeps DeviceMotion orientation unchanged in portrait", () => {
+    const source = orientationAtBearing(30);
+    const orientation = createProjectionOrientation(source, 0);
 
-    expectBearing(cameraForwardBearing(orientation), projected);
+    expect(orientation).toEqual(source);
   });
 
-  test("keeps DeviceMotion yaw when configured with +1", () => {
+  test("applies landscape-left screen rotation without rebuilding yaw", () => {
     const orientation = createProjectionOrientation(
-      orientationAtBearing(30),
-      0,
-      1,
+      NORTH_FACING_ORIENTATION,
+      -90,
     );
 
-    expectBearing(cameraForwardBearing(orientation), 30);
+    expect(Math.hypot(
+      orientation.x,
+      orientation.y,
+      orientation.z,
+      orientation.w,
+    )).toBeCloseTo(1, 10);
+    expect(orientation).not.toEqual(NORTH_FACING_ORIENTATION);
   });
 
-  test("yaw correction preserves the pitch/roll up transform", () => {
-    const source = {
-      x: -0.6532814824,
-      y: 0.2705980501,
-      z: 0.2705980501,
-      w: 0.6532814824,
-    };
-    const corrected = createProjectionOrientation(source, 0, -1);
+  test("applies landscape-right screen rotation without a fixed side", () => {
+    const left = createProjectionOrientation(
+      NORTH_FACING_ORIENTATION,
+      -90,
+    );
+    const right = createProjectionOrientation(
+      NORTH_FACING_ORIENTATION,
+      90,
+    );
 
-    const sourceUp = rotateVector({x: 0, y: 0, z: 1}, source);
-    const correctedUp = rotateVector({x: 0, y: 0, z: 1}, corrected);
-
-    expect(correctedUp.x).toBeCloseTo(sourceUp.x, 10);
-    expect(correctedUp.y).toBeCloseTo(sourceUp.y, 10);
-    expect(correctedUp.z).toBeCloseTo(sourceUp.z, 10);
+    expect(left).not.toEqual(right);
   });
 
   test("installed projection ignores every heading field", () => {
@@ -136,7 +128,5 @@ describe("DeviceMotion-only projection orientation", () => {
     expect(first.orientation).toEqual(second.orientation);
     expect(first.heading).toBe(217);
     expect(second.heading).toBe(0);
-    expectBearing(cameraForwardBearing(first.orientation), 0);
-    expectBearing(cameraForwardBearing(second.orientation), 0);
   });
 });
