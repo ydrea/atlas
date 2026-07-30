@@ -18,6 +18,7 @@ import { GestureDetector } from "react-native-gesture-handler";
 import type { CameraType } from "expo-camera";
 
 import { AR_CONSTANTS } from "@/cumquat/constants";
+import { cameraForwardBearing } from "@/cumquat/northAlignedOrientation";
 import {
   calculateBearing,
   geoToENU,
@@ -594,7 +595,11 @@ export default function ARBetaNativeOverlayView() {
     DEFAULT_OVERLAY_TOP_INSET,
   );
 
-  const fieldOrientationRef = useRef({ pitch: 0, roll: 0 });
+  const fieldOrientationRef = useRef({
+    physicalBearing: null as number | null,
+    pitch: 0,
+    roll: 0,
+  });
   const nativeEngineRef = useRef<NativeEngine | null>(null);
   const nativeDisabledRef = useRef(false);
   const gestureStateRef = useRef<GestureState>(DEFAULT_GESTURE_STATE);
@@ -698,6 +703,7 @@ export default function ARBetaNativeOverlayView() {
 
       setDeviceHeading(normalizeAngle(snapshot.heading));
       fieldOrientationRef.current = {
+        physicalBearing: cameraForwardBearing(snapshot.orientation),
         pitch: Number.isFinite(snapshot.pitchDegrees)
           ? snapshot.pitchDegrees
           : 0,
@@ -883,10 +889,13 @@ export default function ARBetaNativeOverlayView() {
     const shownPOIs = overlayLayout.labels.map(
       (placement) => placement.poi.name,
     );
-    const { pitch, roll } = fieldOrientationRef.current;
+    const { physicalBearing, pitch, roll } = fieldOrientationRef.current;
 
     Tlog("[AR FIELD]", {
-      "physical direction": physicalDirectionFromBearing(deviceHeading),
+      "physical direction":
+        physicalBearing === null
+          ? "UNKNOWN"
+          : `${physicalDirectionFromBearing(physicalBearing)} (${physicalBearing.toFixed(1)}°)`,
       pitch: `${pitch.toFixed(1)}°`,
       roll: `${roll.toFixed(1)}°`,
       "HUD bearing": `${deviceHeading.toFixed(1)}°`,
