@@ -32,6 +32,8 @@ const rawSnapshot: SensorSnapshot = {
   headingAccuracy: 3,
   magneticHeading: 217,
   trueHeading: 217,
+  pitchDegrees: 0,
+  rollDegrees: 0,
   timestamp: 1,
 };
 
