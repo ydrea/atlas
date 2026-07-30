@@ -1,9 +1,7 @@
 import {sensorHub} from "@/cumquat/sensors";
-import {AR_CONSTANTS} from "@/cumquat/constants";
 import type {Quat, SensorSnapshot} from "@/cumquat/types";
 
 const IDENTITY_QUATERNION: Quat = {x: 0, y: 0, z: 0, w: 1};
-export type ProjectionYawSign = -1 | 1;
 
 function normalizeQuaternion(q: Quat): Quat {
   const length = Math.hypot(q.x, q.y, q.z, q.w);
@@ -90,12 +88,6 @@ export function cameraForwardBearing(orientation: Quat): number | null {
   ) % 360;
 }
 
-/** Returns the signed shortest rotation from `from` to `to`. */
-function shortestAngleDegrees(from: number, to: number): number {
-  if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
-  return ((to - from + 540) % 360) - 180;
-}
-
 /**
  * Prepares Expo DeviceMotion for projection.
  *
@@ -108,26 +100,13 @@ function shortestAngleDegrees(from: number, to: number): number {
 export function createProjectionOrientation(
   motionOrientation: Quat,
   screenOrientationDegrees: number,
-  yawSign: ProjectionYawSign,
 ): Quat {
+  // This is only a coordinate-frame change from Expo's portrait sensor frame
+  // to the active screen frame. Yaw is not extracted, negated or rebuilt here.
+  // Cumquat owns the Expo-to-camera basis conversion.
   const portraitToScreen = zRotationQuaternion(-screenOrientationDegrees);
-  const screenOrientation = normalizeQuaternion(
-    multiplyQuaternions(portraitToScreen, motionOrientation),
-  );
-
-  if (yawSign === 1) return screenOrientation;
-
-  const motionBearing = cameraForwardBearing(screenOrientation);
-  if (motionBearing === null) return screenOrientation;
-
-  const desiredBearing = ((-motionBearing % 360) + 360) % 360;
-  const correction = shortestAngleDegrees(motionBearing, desiredBearing);
-
   return normalizeQuaternion(
-    multiplyQuaternions(
-      screenOrientation,
-      zRotationQuaternion(correction),
-    ),
+    multiplyQuaternions(portraitToScreen, motionOrientation),
   );
 }
 
@@ -143,9 +122,6 @@ export function installNorthAlignedOrientation(): void {
   installed = true;
 
   const getRawSnapshot = sensorHub.getSnapshot.bind(sensorHub);
-  const configuredSign = Number(AR_CONSTANTS.SENSOR.PROJECTION_YAW_SIGN);
-  const yawSign: ProjectionYawSign = configuredSign === 1 ? 1 : -1;
-
   sensorHub.getSnapshot = (): SensorSnapshot => {
     const snapshot = getRawSnapshot();
 
@@ -154,7 +130,6 @@ export function installNorthAlignedOrientation(): void {
       orientation: createProjectionOrientation(
         snapshot.orientation,
         snapshot.screenOrientationDegrees,
-        yawSign,
       ),
     };
   };
