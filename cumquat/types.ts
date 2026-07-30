@@ -8,6 +8,7 @@ export type SensorSnapshot = {
   lon: number;
   elevation: number;
   orientation: Quat;
+  rawOrientation?: Quat;
   screenOrientationDegrees: DeviceScreenOrientationDegrees;
   heading: number;
   headingAccuracy: CompassAccuracy;
