@@ -54,9 +54,6 @@ const DISTANCE_COMMIT_THRESHOLD_METERS = 2;
 const LABEL_WIDTH = 170;
 const LABEL_HEIGHT = 58;
 const LABEL_COLLISION_PADDING = 8;
-const MAX_VISIBLE_LABELS = 8;
-const MAX_EDGE_INDICATORS = 10;
-const EDGE_INDICATOR_SPACING = 28;
 const EDGE_MARGIN = 28;
 const DEFAULT_OVERLAY_TOP_INSET = 76;
 const HUD_SAFE_GAP = 12;
@@ -336,7 +333,6 @@ function selectVisibleLabels(
   for (const poi of [...pois].sort(
     (left, right) => left.distance - right.distance,
   )) {
-    if (placements.length >= MAX_VISIBLE_LABELS) break;
 
     const left = Math.max(
       EDGE_MARGIN,
@@ -469,20 +465,12 @@ function selectEdgeIndicators(
   for (const poi of [...pois].sort(
     (left, right) => left.distance - right.distance,
   )) {
-    if (selected.length >= MAX_EDGE_INDICATORS) break;
     if (labelIds.has(poi.id)) continue;
 
     const kind = classifyIndicator(poi, poi.isVisible);
     if (!kind) continue;
 
-    const placement = getIndicatorPlacement(poi, viewport, kind, topInset);
-    const overlaps = selected.some(
-      (existing) =>
-        Math.hypot(placement.x - existing.x, placement.y - existing.y) <
-        EDGE_INDICATOR_SPACING,
-    );
-
-    if (!overlaps) selected.push(placement);
+    selected.push(getIndicatorPlacement(poi, viewport, kind, topInset));
   }
 
   return selected;
