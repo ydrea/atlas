@@ -47,7 +47,7 @@ export const AR_CONSTANTS = {
     // DeviceMotion and geographic bearings use opposite yaw directions on
     // the target Android device. Change only this value if field testing
     // proves the convention is already correct.
-    PROJECTION_YAW_SIGN: -1,
+    PROJECTION_YAW_SIGN: 1,
   },
 
   // UI settings
