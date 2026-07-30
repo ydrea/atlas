@@ -142,6 +142,7 @@ export function installNorthAlignedOrientation(): void {
 
     return {
       ...snapshot,
+      rawOrientation: {...snapshot.orientation},
       orientation: createProjectionOrientation(
         snapshot.orientation,
         snapshot.screenOrientationDegrees,
