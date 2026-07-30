@@ -36,6 +36,7 @@ import type { BinaryPOI } from "@/data/binaryDataLoader";
 import { loadPOIsFromAsset } from "@/data/binaryDataLoader";
 import poiBinaryAsset from "@/data/pois.json.bin";
 import { useCameraZoom } from "@/hooks/useCameraZoom";
+import { Tlog } from "@/utils/tlog";
 import type {
   EngineConfig,
   FrameSnapshot,
@@ -156,6 +157,13 @@ function getNativeFactory(): NativeEngineFactory | null {
 
 const normalizeAngle = (degrees: number): number =>
   ((degrees % 360) + 360) % 360;
+
+function physicalDirectionFromBearing(bearing: number): string {
+  if (!Number.isFinite(bearing)) return "UNKNOWN";
+
+  const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return directions[Math.round(normalizeAngle(bearing) / 45) % 8];
+}
 
 function toNativeViewState(state: GestureState): NativeViewState {
   const minDistanceMeters = Math.max(0, state.minDistance);
@@ -586,6 +594,7 @@ export default function ARBetaNativeOverlayView() {
     DEFAULT_OVERLAY_TOP_INSET,
   );
 
+  const fieldOrientationRef = useRef({ pitch: 0, roll: 0 });
   const nativeEngineRef = useRef<NativeEngine | null>(null);
   const nativeDisabledRef = useRef(false);
   const gestureStateRef = useRef<GestureState>(DEFAULT_GESTURE_STATE);
@@ -688,6 +697,14 @@ export default function ARBetaNativeOverlayView() {
       if (pois.length === 0) return;
 
       setDeviceHeading(normalizeAngle(snapshot.heading));
+      fieldOrientationRef.current = {
+        pitch: Number.isFinite(snapshot.pitchDegrees)
+          ? snapshot.pitchDegrees
+          : 0,
+        roll: Number.isFinite(snapshot.rollDegrees)
+          ? snapshot.rollDegrees
+          : 0,
+      };
 
       const currentViewport = viewportRef.current;
 
@@ -861,6 +878,21 @@ export default function ARBetaNativeOverlayView() {
     () => layoutOverlay(projectedPOIs, viewport, overlayTopInset),
     [overlayTopInset, projectedPOIs, viewport],
   );
+
+  useEffect(() => {
+    const shownPOIs = overlayLayout.labels.map(
+      (placement) => placement.poi.name,
+    );
+    const { pitch, roll } = fieldOrientationRef.current;
+
+    Tlog("[AR FIELD]", {
+      "physical direction": physicalDirectionFromBearing(deviceHeading),
+      pitch: `${pitch.toFixed(1)}°`,
+      roll: `${roll.toFixed(1)}°`,
+      "HUD bearing": `${deviceHeading.toFixed(1)}°`,
+      "POIs shown": shownPOIs,
+    });
+  }, [deviceHeading, overlayLayout.labels]);
 
   return (
     <GestureDetector gesture={pinchGesture}>
