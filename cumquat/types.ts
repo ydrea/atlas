@@ -13,6 +13,8 @@ export type SensorSnapshot = {
   headingAccuracy: CompassAccuracy;
   magneticHeading: number;
   trueHeading: number | null;
+  pitchDegrees: number;
+  rollDegrees: number;
   timestamp: number;
 };
 
