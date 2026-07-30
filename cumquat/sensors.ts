@@ -105,6 +105,8 @@ class SensorHub {
     headingAccuracy: 0,
     magneticHeading: 0,
     trueHeading: null,
+    pitchDegrees: 0,
+    rollDegrees: 0,
     timestamp: 0,
   };
 
@@ -207,6 +209,14 @@ class SensorHub {
         beta?: number;
         gamma?: number;
       };
+
+      if (Number.isFinite(rot.beta)) {
+        this.snapshot.pitchDegrees = (rot.beta as number) * RAD2DEG;
+      }
+      if (Number.isFinite(rot.gamma)) {
+        this.snapshot.rollDegrees = (rot.gamma as number) * RAD2DEG;
+      }
+
       let orientation: Quat;
 
       if (
