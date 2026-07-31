@@ -54,3 +54,6 @@ credentials.json
 credentials/
 *.jks
 *.keystore
+
+# Local Android builds
+*.apk
