@@ -5,7 +5,7 @@ export default () => {
   let packageName = "com.ydrea.atlas.dev";
   let appName = "ATLAS (Dev)";
   let iconConfig = {
-    icon: "./assets/development/icon.png",
+    icon: "./assets/icons/development/icon.png",
     android: {
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
@@ -118,12 +118,12 @@ export default () => {
       [
         "expo-splash-screen",
         {
-          image: "./assets/development/icon.png",
+          image: "./assets/icons/development/icon.png",
           imageWidth: 500,
           resizeMode: "contain",
           backgroundColor: "#dfdfdf",
           dark: {
-            image: "./assets/development/icon.png",
+            image: "./assets/icons/development/icon.png",
             backgroundColor: "#202020",
           },
         },
