@@ -52,7 +52,7 @@ export default () => {
   return {
     name: appName,
     slug: "atlas",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "landscape",
     icon: iconConfig.icon,
     scheme: "atlas",
