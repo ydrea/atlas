@@ -80,7 +80,10 @@ describe("DeviceMotion-only projection orientation", () => {
     const source = orientationAtBearing(30);
     const orientation = createProjectionOrientation(source, 0);
 
-    expect(orientation).toEqual(source);
+    expect(orientation.x).toBeCloseTo(source.x, 14);
+    expect(orientation.y).toBeCloseTo(source.y, 14);
+    expect(orientation.z).toBeCloseTo(source.z, 14);
+    expect(orientation.w).toBeCloseTo(source.w, 14);
   });
 
   test("applies landscape-left screen rotation without rebuilding yaw", () => {

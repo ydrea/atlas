@@ -18,7 +18,7 @@ const originalLog = console.log;
 
 function createMockPOIs(count) {
   return Array.from({ length: count }, (_, index) => ({
-    id: index + 1,
+    id: 10_000 + index,
     name: `Island ${index + 1}`,
     lat: 42 + (index % 100) * 0.001,
     lon: 14 + Math.floor(index / 100) * 0.001,

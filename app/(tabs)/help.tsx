@@ -23,6 +23,7 @@ import Svg, {
   LinearGradient,
   Stop,
 } from "react-native-svg";
+import { UpdatePanel } from "@/components/UpdatePanel";
 
 const { width, height } = Dimensions.get("window");
 
@@ -377,6 +378,7 @@ export default function HelpScreen({ onClose }: HelpScreenProps) {
           <View style={styles.footer}>
             <Text style={styles.footerText}>{translate("helpFooter")}</Text>
           </View>
+          <UpdatePanel />
         </ScrollView>
       </SafeAreaView>
     </GestureHandlerRootView>

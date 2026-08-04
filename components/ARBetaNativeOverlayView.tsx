@@ -585,8 +585,8 @@ export default function ARBetaNativeOverlayView() {
 
   const fieldOrientationRef = useRef({
     physicalBearing: null as number | null,
-    rawQuaternion: null as SensorSnapshot["rawOrientation"],
-    projectionQuaternion: null as SensorSnapshot["rawOrientation"],
+    rawQuaternion: undefined as SensorSnapshot["rawOrientation"],
+    projectionQuaternion: undefined as SensorSnapshot["rawOrientation"],
     screenOrientation: 0,
     pitch: 0,
     roll: 0,
