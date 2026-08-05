@@ -1,3 +1,4 @@
+//radarMath.test.ts
 import {
   frameForwardBearing,
   isInsideFOV,
@@ -16,7 +17,7 @@ describe("radar math", () => {
   test("reads north-facing Earth-from-device camera orientation", () => {
     expect(
       frameForwardBearing({
-        quaternion: {x: HALF_SQRT_TWO, y: 0, z: 0, w: HALF_SQRT_TWO},
+        quaternion: { x: HALF_SQRT_TWO, y: 0, z: 0, w: HALF_SQRT_TWO },
         convention: "earth-from-device",
       }),
     ).toBeCloseTo(0);
@@ -25,7 +26,7 @@ describe("radar math", () => {
   test("reads north-facing world-to-camera orientation", () => {
     expect(
       frameForwardBearing({
-        quaternion: {x: -HALF_SQRT_TWO, y: 0, z: 0, w: HALF_SQRT_TWO},
+        quaternion: { x: -HALF_SQRT_TWO, y: 0, z: 0, w: HALF_SQRT_TWO },
         convention: "world-to-camera",
       }),
     ).toBeCloseTo(0);

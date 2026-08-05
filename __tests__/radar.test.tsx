@@ -1,8 +1,14 @@
-import React from "react";
-import {act, fireEvent, render, screen, waitFor} from "@testing-library/react-native";
+// __tests__/radar.test.tsx
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 
 const mockPOIs = [
-  {id: 1, name: "North Island", lat: 45.9, lon: 15.96, alt: 123},
+  { id: 1, name: "North Island", lat: 45.9, lon: 15.96, alt: 123 },
 ];
 const mockLoadPOIsFromAsset = jest.fn().mockResolvedValue(mockPOIs);
 
@@ -17,17 +23,17 @@ const mockSensorHub = {
     lat: 45.8,
     lon: 15.96,
     elevation: 120,
-    orientation: {x: 0, y: 0, z: 0, w: 1},
+    orientation: { x: 0, y: 0, z: 0, w: 1 },
     heading: 225,
     headingAccuracy: 3,
     timestamp: 10,
   })),
 };
 
-jest.mock("@/cumquat/sensors", () => ({sensorHub: mockSensorHub}));
+jest.mock("@/cumquat/sensors", () => ({ sensorHub: mockSensorHub }));
 
 const orientation = {
-  quaternion: {x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2},
+  quaternion: { x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 },
   convention: "earth-from-device",
 };
 const projected = {
@@ -56,7 +62,7 @@ const mockEngine = {
 };
 
 jest.mock("react-native-cumquat", () => ({
-  CumquatEngine: {create: jest.fn(() => mockEngine)},
+  CumquatEngine: { create: jest.fn(() => mockEngine) },
 }));
 
 let gestureOptions: any;
@@ -64,8 +70,8 @@ const mockSetControllerState = jest.fn((state) => state);
 
 jest.mock("react-native-cumquat-gestures", () => ({
   cloneGestureConfig: () => ({
-    distance: {min: 0, max: 135000, minGap: 100},
-    fov: {min: 30, max: 120},
+    distance: { min: 0, max: 135000, minGap: 100 },
+    fov: { min: 30, max: 120 },
     gesture: {
       verticalPixelToZoom: 0.003,
       zoomCouplingFactor: 0.5,
@@ -73,7 +79,7 @@ jest.mock("react-native-cumquat-gestures", () => ({
   }),
   useARGestureController: (options: any) => {
     gestureOptions = options;
-    return {gesture: {kind: "mock"}, setState: mockSetControllerState};
+    return { gesture: { kind: "mock" }, setState: mockSetControllerState };
   },
 }));
 
@@ -88,8 +94,8 @@ jest.mock("expo-router", () => {
 
 jest.mock("react-native-gesture-handler", () => {
   const React = require("react");
-  const {View} = require("react-native");
-  return {GestureDetector: ({children}: any) => <View>{children}</View>};
+  const { View } = require("react-native");
+  return { GestureDetector: ({ children }: any) => <View>{children}</View> };
 });
 
 jest.mock("@/ui/RubberBandVisualFeedback", () => ({
@@ -112,7 +118,7 @@ describe("RadarView", () => {
     expect(mockEngine.update).toHaveBeenCalledWith(
       expect.objectContaining({
         initialHeadingDegrees: 225,
-        location: {latitude: 45.8, longitude: 15.96, altitude: 120},
+        location: { latitude: 45.8, longitude: 15.96, altitude: 120 },
       }),
     );
     expect(screen.getByTestId("radar-blip-1")).toBeTruthy();
@@ -129,7 +135,7 @@ describe("RadarView", () => {
 
     await act(() => {
       gestureOptions.callbacks.onUpdate({
-        state: {minDistance: 0, maxDistance: 25_000, zoom: 0, fov: 75},
+        state: { minDistance: 0, maxDistance: 25_000, zoom: 0, fov: 75 },
         rubberBanding: false,
         activeLimit: null,
         excess: 0,
@@ -141,7 +147,9 @@ describe("RadarView", () => {
       minDistanceMeters: 0,
       maxDistanceMeters: 25_000,
     });
-    expect(require("react-native-cumquat").CumquatEngine.create).toHaveBeenCalledTimes(1);
+    expect(
+      require("react-native-cumquat").CumquatEngine.create,
+    ).toHaveBeenCalledTimes(1);
     await view.unmount();
   });
 });
