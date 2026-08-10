@@ -37,13 +37,10 @@ jest.mock("@/cumquat/sensors", () => ({
     Math.round((accuracy / 3) * 100),
   getCompassCameraHeading: (snapshot: {
     heading: number;
-    headingAccuracy: number;
     screenOrientationDegrees: number;
   }) =>
-    snapshot.headingAccuracy >= 2
-      ? ((snapshot.heading + snapshot.screenOrientationDegrees) % 360 + 360) %
-        360
-      : null,
+    ((snapshot.heading + snapshot.screenOrientationDegrees) % 360 + 360) %
+    360,
 }));
 
 const orientation = {
