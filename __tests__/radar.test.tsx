@@ -24,13 +24,27 @@ const mockSensorHub = {
     lon: 15.96,
     elevation: 120,
     orientation: { x: 0, y: 0, z: 0, w: 1 },
+    screenOrientationDegrees: 90,
     heading: 225,
     headingAccuracy: 3,
     timestamp: 10,
   })),
 };
 
-jest.mock("@/cumquat/sensors", () => ({ sensorHub: mockSensorHub }));
+jest.mock("@/cumquat/sensors", () => ({
+  sensorHub: mockSensorHub,
+  getCompassCalibrationPercent: (accuracy: number) =>
+    Math.round((accuracy / 3) * 100),
+  getCompassCameraHeading: (snapshot: {
+    heading: number;
+    headingAccuracy: number;
+    screenOrientationDegrees: number;
+  }) =>
+    snapshot.headingAccuracy >= 2
+      ? ((snapshot.heading + snapshot.screenOrientationDegrees) % 360 + 360) %
+        360
+      : null,
+}));
 
 const orientation = {
   quaternion: { x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 },
@@ -117,7 +131,7 @@ describe("RadarView", () => {
 
     expect(mockEngine.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        initialHeadingDegrees: 225,
+        initialHeadingDegrees: 315,
         location: { latitude: 45.8, longitude: 15.96, altitude: 120 },
       }),
     );
