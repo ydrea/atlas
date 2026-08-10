@@ -123,7 +123,7 @@ class SensorHub {
     elevation: 0,
     orientation: {x: 0, y: 0, z: 0, w: 1},
     screenOrientationDegrees: 0,
-    heading: 0,
+    heading: Number.NaN,
     headingAccuracy: 0,
     magneticHeading: 0,
     trueHeading: null,
@@ -187,8 +187,11 @@ class SensorHub {
     this.locationWatch = null;
     this.headingWatch = null;
     // Never pair a newly-created native engine with a compass sample from a
-    // previous sensor session. A fresh heading callback must establish each
-    // startup reference.
+    // previous sensor session. Accuracy is informational, but the heading
+    // itself must come from a fresh callback in the current sensor session.
+    this.snapshot.heading = Number.NaN;
+    this.snapshot.magneticHeading = Number.NaN;
+    this.snapshot.trueHeading = null;
     this.snapshot.headingAccuracy = 0;
     nativeProjectionDebug.dispose();
   }
