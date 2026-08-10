@@ -37,7 +37,6 @@ import {
 } from "react-native-cumquat-gestures";
 
 import {AR_CONSTANTS} from "@/cumquat/constants";
-import {cameraBearingFromDeviceHeading} from "@/cumquat/northAlignedOrientation";
 import {
   formatRadarDistance,
   frameForwardBearing,
@@ -309,11 +308,6 @@ export default function RadarView() {
       if (snapshot.lat === 0 && snapshot.lon === 0) return;
 
       try {
-        const cameraHeading = cameraBearingFromDeviceHeading(
-          snapshot.heading,
-          snapshot.screenOrientationDegrees,
-        );
-
         engineRef.current.update({
           timestampNs: snapshot.timestamp * 1_000_000,
           location: {
@@ -324,8 +318,8 @@ export default function RadarView() {
           orientationQuaternion: snapshot.orientation,
           // Paired once by Cumquat; later heading changes cannot steer radar.
           initialHeadingDegrees:
-            snapshot.headingAccuracy >= 2 ? cameraHeading : undefined,
-          headingDegrees: cameraHeading,
+            snapshot.headingAccuracy >= 2 ? snapshot.heading : undefined,
+          headingDegrees: snapshot.heading,
           pitchDegrees: 0,
           rollDegrees: 0,
           viewportWidth: Math.max(1, diameter),
