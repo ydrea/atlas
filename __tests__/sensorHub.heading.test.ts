@@ -151,6 +151,21 @@ describe("SensorHub compass integration", () => {
     });
   });
 
+  test("invalidates stale calibration when sensors stop", async () => {
+    await sensorHub.start();
+    emitHeading?.({
+      accuracy: 3,
+      magHeading: 270,
+      trueHeading: 270,
+    });
+
+    expect(sensorHub.getSnapshot().headingAccuracy).toBe(3);
+
+    sensorHub.stop();
+
+    expect(sensorHub.getSnapshot().headingAccuracy).toBe(0);
+  });
+
   test("stops the heading subscription", async () => {
     await sensorHub.start();
     sensorHub.stop();
