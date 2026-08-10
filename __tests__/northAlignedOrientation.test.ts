@@ -11,6 +11,7 @@ jest.mock("@/cumquat/sensors", () => ({
 import {sensorHub} from "@/cumquat/sensors";
 import {
   cameraForwardBearing,
+  cumquatCameraForwardBearing,
   createProjectionOrientation,
   installNorthAlignedOrientation,
 } from "@/cumquat/northAlignedOrientation";
@@ -67,6 +68,19 @@ function expectBearing(actual: number | null, expected: number): void {
   expect(actual).not.toBeNull();
   expect(actual as number).toBeCloseTo(expected, 10);
 }
+
+describe("camera bearing from full Expo orientation", () => {
+  test("uses the captured Galaxy S7 quaternion instead of scalar heading", () => {
+    const captured = {
+      x: 0.018003,
+      y: 0.041049,
+      z: -0.998476,
+      w: -0.032183,
+    };
+
+    expect(cumquatCameraForwardBearing(captured)).toBeCloseTo(338.2, 1);
+  });
+});
 
 describe("DeviceMotion-only projection orientation", () => {
   beforeEach(() => {
