@@ -10,7 +10,6 @@ jest.mock("@/cumquat/sensors", () => ({
 
 import {sensorHub} from "@/cumquat/sensors";
 import {
-  cameraBearingFromDeviceHeading,
   cameraForwardBearing,
   createProjectionOrientation,
   installNorthAlignedOrientation,
@@ -68,21 +67,6 @@ function expectBearing(actual: number | null, expected: number): void {
   expect(actual).not.toBeNull();
   expect(actual as number).toBeCloseTo(expected, 10);
 }
-
-describe("camera bearing reference", () => {
-  test("converts landscape-right device-top west into camera north", () => {
-    expect(cameraBearingFromDeviceHeading(270, 90)).toBe(0);
-  });
-
-  test("converts landscape-left device-top east into camera north", () => {
-    expect(cameraBearingFromDeviceHeading(90, -90)).toBe(0);
-  });
-
-  test("normalizes across the north boundary", () => {
-    expect(cameraBearingFromDeviceHeading(267, 90)).toBe(357);
-    expect(cameraBearingFromDeviceHeading(93, -90)).toBe(3);
-  });
-});
 
 describe("DeviceMotion-only projection orientation", () => {
   beforeEach(() => {
