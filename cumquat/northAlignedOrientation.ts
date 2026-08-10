@@ -3,6 +3,21 @@ import type {Quat, SensorSnapshot} from "@/cumquat/types";
 
 const IDENTITY_QUATERNION: Quat = {x: 0, y: 0, z: 0, w: 1};
 
+/**
+ * Converts Expo Location's device-top heading into the horizontal bearing of
+ * the rear camera. Atlas is landscape-only, so the active screen rotation is
+ * exactly the missing quarter-turn. This value is suitable for the one-time
+ * geographic reference; it must not be reapplied to later gyro samples.
+ */
+export function cameraBearingFromDeviceHeading(
+  deviceHeadingDegrees: number,
+  screenOrientationDegrees: number,
+): number {
+  if (!Number.isFinite(deviceHeadingDegrees)) return 0;
+  const cameraBearing = deviceHeadingDegrees + screenOrientationDegrees;
+  return ((cameraBearing % 360) + 360) % 360;
+}
+
 function normalizeQuaternion(q: Quat): Quat {
   const length = Math.hypot(q.x, q.y, q.z, q.w);
   if (!Number.isFinite(length) || length <= Number.EPSILON) {
