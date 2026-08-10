@@ -4,6 +4,7 @@ export default () => {
 
   let packageName = "com.ydrea.atlas.dev";
   let appName = "ATLAS (Dev)";
+  let scheme = "atlas-dev";
   let iconConfig = {
     icon: "./assets/icons/development/icon.png",
     android: {
@@ -19,6 +20,7 @@ export default () => {
   if (buildProfile === "production") {
     packageName = "com.ydrea.atlas";
     appName = "ATLAS (Prod)";
+    scheme = "atlas";
     iconConfig = {
       icon: "./assets/icons/production/icon.png",
       android: {
@@ -33,6 +35,7 @@ export default () => {
   } else if (buildProfile === "preview") {
     packageName = "com.ydrea.atlas.preview";
     appName = "ATLAS (Preview)";
+    scheme = "atlas-preview";
     iconConfig = {
       icon: "./assets/icons/preview/icon.png",
       android: {
@@ -55,7 +58,7 @@ export default () => {
     version: "1.0.1",
     orientation: "landscape",
     icon: iconConfig.icon,
-    scheme: "atlas",
+    scheme,
     userInterfaceStyle: "automatic",
     ios: {
       supportsTablet: true,
@@ -118,12 +121,12 @@ export default () => {
       [
         "expo-splash-screen",
         {
-          image: "./assets/icons/development/icon.png",
+          image: iconConfig.icon,
           imageWidth: 500,
           resizeMode: "contain",
           backgroundColor: "#dfdfdf",
           dark: {
-            image: "./assets/icons/development/icon.png",
+            image: iconConfig.icon,
             backgroundColor: "#202020",
           },
         },
