@@ -72,7 +72,7 @@ function getCompassCalibrationPercent(accuracy: number): number {
 function getCompassCameraHeading(
   snapshot: Pick<
     SensorSnapshot,
-    "heading" | "screenOrientationDegrees"
+    "heading" | "headingAccuracy" | "screenOrientationDegrees"
   >,
 ): number | null {
   if (!Number.isFinite(snapshot.heading)) return null;
