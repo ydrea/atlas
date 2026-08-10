@@ -61,7 +61,7 @@ const DEFAULT_STATE: GestureState = {
   fov: AR_CONSTANTS.FOV.DEFAULT,
 };
 
-type RadarStatus = "loading" | "calibrating" | "ready" | "error";
+type RadarStatus = "loading" | "starting" | "ready" | "error";
 
 type RadarBlip = {
   source: BinaryPOI;
@@ -258,7 +258,7 @@ export default function RadarView() {
       engine.setViewState(toNativeViewState(gestureStateRef.current));
       engineRef.current = engine;
       nativeFrameLoggedRef.current = false;
-      setStatus("calibrating");
+      setStatus("starting");
       setError(null);
     } catch (nativeError: unknown) {
       setStatus("error");
@@ -342,14 +342,17 @@ export default function RadarView() {
         setSequence(frame.sequence);
         setOrientation(nextOrientation);
 
-        if (nextForwardBearing === null) {
-          setStatus("calibrating");
-          setProjectedPOIs([]);
+        const resolvedForwardBearing =
+          nextForwardBearing ?? compassCameraHeading;
+
+        setProjectedPOIs(frame.projectedPOIs);
+
+        if (resolvedForwardBearing === null) {
+          setStatus("starting");
           return;
         }
 
-        setForwardBearing(nextForwardBearing);
-        setProjectedPOIs(frame.projectedPOIs);
+        setForwardBearing(resolvedForwardBearing);
         setStatus("ready");
         setError(null);
       } catch (nativeError: unknown) {
@@ -565,9 +568,9 @@ export default function RadarView() {
               />
             </Svg>
 
-            {status !== "ready" ? (
+            {status === "loading" || status === "error" ? (
               <View style={styles.radarMessage}>
-                {status === "loading" || status === "calibrating" ? (
+                {status === "loading" ? (
                   <ActivityIndicator color="#55ef98" />
                 ) : null}
                 <Text style={styles.radarMessageTitle}>
