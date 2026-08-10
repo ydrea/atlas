@@ -193,7 +193,15 @@ describe("SensorHub compass integration", () => {
 
     sensorHub.stop();
 
-    expect(sensorHub.getSnapshot().headingAccuracy).toBe(0);
+    expect(sensorHub.getSnapshot()).toMatchObject({
+      heading: Number.NaN,
+      magneticHeading: Number.NaN,
+      trueHeading: null,
+      headingAccuracy: 0,
+    });
+    expect(
+      getCompassCameraHeading(sensorHub.getSnapshot()),
+    ).toBeNull();
   });
 
   test("stops the heading subscription", async () => {
