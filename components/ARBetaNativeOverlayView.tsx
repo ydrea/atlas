@@ -692,9 +692,13 @@ export default function ARBetaNativeOverlayView() {
     (snapshot: SensorSnapshot) => {
       if (pois.length === 0) return;
 
-      setDeviceHeading(normalizeAngle(snapshot.heading));
+      const cameraBearing =
+        cumquatCameraForwardBearing(snapshot.orientation);
+      const displayedBearing =
+        cameraBearing ?? normalizeAngle(snapshot.heading);
+      setDeviceHeading(displayedBearing);
       fieldOrientationRef.current = {
-        physicalBearing: cumquatCameraForwardBearing(snapshot.orientation),
+        physicalBearing: cameraBearing,
         rawQuaternion: snapshot.rawOrientation,
         projectionQuaternion: snapshot.orientation,
         screenOrientation: snapshot.screenOrientationDegrees,
@@ -726,10 +730,10 @@ export default function ARBetaNativeOverlayView() {
             // Cumquat consumes this only once, paired with this exact motion
             // quaternion. Later compass readings remain HUD-only.
             initialHeadingDegrees:
-              snapshot.headingAccuracy >= 2
-                ? normalizeAngle(snapshot.heading)
+              snapshot.headingAccuracy >= 2 && cameraBearing !== null
+                ? cameraBearing
                 : undefined,
-            headingDegrees: snapshot.heading,
+            headingDegrees: displayedBearing,
             pitchDegrees: 0,
             rollDegrees: 0,
             viewportWidth: currentViewport.width,
