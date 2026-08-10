@@ -117,14 +117,21 @@ const RadarView = require("@/components/RadarView").default;
 
 describe("RadarView", () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   test("uses Cumquat orientation and POIs for an interactive radar", async () => {
     const view = await render(<RadarView />);
 
     await waitFor(() => expect(mockEngine.initialize).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mockEngine.update).toHaveBeenCalled());
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
 
     expect(mockEngine.update).toHaveBeenCalledWith(
       expect.objectContaining({
