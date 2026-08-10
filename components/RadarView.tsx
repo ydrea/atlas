@@ -44,7 +44,10 @@ import {
   isInsideFOV,
   projectRadarPoint,
 } from "@/cumquat/radarMath";
-import {sensorHub} from "@/cumquat/sensors";
+import {
+  getCompassCalibrationPercent,
+  sensorHub,
+} from "@/cumquat/sensors";
 import type {BinaryPOI} from "@/data/binaryDataLoader";
 import {loadPOIsFromAsset} from "@/data/binaryDataLoader";
 import poiBinaryAsset from "@/data/pois.json.bin";
@@ -134,6 +137,7 @@ export default function RadarView() {
   const [status, setStatus] = useState<RadarStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [sequence, setSequence] = useState(0);
+  const [compassCalibration, setCompassCalibration] = useState(0);
   const [rubberBanding, setRubberBanding] = useState(false);
   const [activeLimit, setActiveLimit] = useState<LimitType | null>(null);
   const [rubberBandIntensity, setRubberBandIntensity] = useState(0);
@@ -299,6 +303,9 @@ export default function RadarView() {
     const interval = setInterval(() => {
       if (!focusedRef.current || !engineRef.current) return;
       const snapshot = sensorHub.getSnapshot();
+      setCompassCalibration(
+        getCompassCalibrationPercent(snapshot.headingAccuracy),
+      );
       if (snapshot.lat === 0 && snapshot.lon === 0) return;
 
       try {
@@ -565,7 +572,7 @@ export default function RadarView() {
                 </Text>
                 <Text style={styles.radarMessageText}>
                   {error ??
-                    "Hold the phone steady while Cumquat freezes its geographic orientation reference."}
+                    `Compass calibration ${compassCalibration}%. Move the phone in a figure eight, then hold it steady while Cumquat freezes the geographic reference.`}
                 </Text>
                 {status === "error" ? (
                   <Pressable
