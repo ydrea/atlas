@@ -3,6 +3,7 @@ import {DeviceMotion} from "expo-sensors";
 
 import {
   getCompassCalibrationPercent,
+  getCompassCameraHeading,
   SensorStartError,
   sensorHub,
 } from "@/cumquat/sensors";
@@ -105,6 +106,35 @@ describe("SensorHub compass integration", () => {
     });
 
     expect(getCompassCalibrationPercent(2)).toBe(67);
+  });
+
+  test.each([
+    [299, 90, 29],
+    [6, 0, 6],
+    [6, -90, 276],
+    [350, 180, 170],
+  ])(
+    "converts compass %s° at screen rotation %s° to camera bearing %s°",
+    (heading, screenOrientationDegrees, expected) => {
+      expect(
+        getCompassCameraHeading({
+          heading,
+          headingAccuracy: 2,
+          screenOrientationDegrees:
+            screenOrientationDegrees as 0 | 90 | 180 | -90,
+        }),
+      ).toBe(expected);
+    },
+  );
+
+  test("does not expose a camera heading before compass calibration", () => {
+    expect(
+      getCompassCameraHeading({
+        heading: 6,
+        headingAccuracy: 1,
+        screenOrientationDegrees: 90,
+      }),
+    ).toBeNull();
   });
 
   test("stores the live DeviceMotion screen orientation", async () => {
