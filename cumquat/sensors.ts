@@ -164,6 +164,10 @@ class SensorHub {
     this.deviceMotionSub = null;
     this.locationWatch = null;
     this.headingWatch = null;
+    // Never pair a newly-created native engine with a compass sample from a
+    // previous sensor session. A fresh heading callback must establish each
+    // startup reference.
+    this.snapshot.headingAccuracy = 0;
     nativeProjectionDebug.dispose();
   }
 
