@@ -116,13 +116,22 @@ jest.mock("@/ui/RubberBandVisualFeedback", () => ({
 const RadarView = require("@/components/RadarView").default;
 
 describe("RadarView", () => {
+  let radarTick: (() => void) | null;
+  let intervalSpy: jest.SpiedFunction<typeof global.setInterval>;
+
   beforeEach(() => {
-    jest.useFakeTimers();
     jest.clearAllMocks();
+    radarTick = null;
+    intervalSpy = jest
+      .spyOn(global, "setInterval")
+      .mockImplementation((callback) => {
+        radarTick = callback as () => void;
+        return 1 as unknown as ReturnType<typeof setInterval>;
+      });
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    intervalSpy.mockRestore();
   });
 
   test("uses Cumquat orientation and POIs for an interactive radar", async () => {
@@ -130,7 +139,7 @@ describe("RadarView", () => {
 
     await waitFor(() => expect(mockEngine.initialize).toHaveBeenCalledTimes(1));
     await act(async () => {
-      jest.advanceTimersByTime(100);
+      radarTick?.();
     });
 
     expect(mockEngine.update).toHaveBeenCalledWith(
