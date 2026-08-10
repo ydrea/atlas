@@ -127,14 +127,14 @@ describe("SensorHub compass integration", () => {
     },
   );
 
-  test("does not expose a camera heading before compass calibration", () => {
+  test("uses a finite compass heading regardless of accuracy grade", () => {
     expect(
       getCompassCameraHeading({
-        heading: 6,
+        heading: 281,
         headingAccuracy: 1,
         screenOrientationDegrees: 90,
       }),
-    ).toBeNull();
+    ).toBe(11);
   });
 
   test("stores the live DeviceMotion screen orientation", async () => {
