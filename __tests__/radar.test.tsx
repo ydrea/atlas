@@ -113,6 +113,10 @@ jest.mock("@/ui/RubberBandVisualFeedback", () => ({
   RubberBandVisualFeedback: () => null,
 }));
 
+jest.mock("@/utils/tlog", () => ({
+  Tlog: jest.fn(),
+}));
+
 const RadarView = require("@/components/RadarView").default;
 
 describe("RadarView", () => {
