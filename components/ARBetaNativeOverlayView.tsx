@@ -18,10 +18,7 @@ import { GestureDetector } from "react-native-gesture-handler";
 import type { CameraType } from "expo-camera";
 
 import { AR_CONSTANTS } from "@/cumquat/constants";
-import {
-  cameraBearingFromDeviceHeading,
-  cumquatCameraForwardBearing,
-} from "@/cumquat/northAlignedOrientation";
+import { cumquatCameraForwardBearing } from "@/cumquat/northAlignedOrientation";
 import {
   calculateBearing,
   geoToENU,
@@ -695,11 +692,7 @@ export default function ARBetaNativeOverlayView() {
     (snapshot: SensorSnapshot) => {
       if (pois.length === 0) return;
 
-      const cameraHeading = cameraBearingFromDeviceHeading(
-        snapshot.heading,
-        snapshot.screenOrientationDegrees,
-      );
-      setDeviceHeading(cameraHeading);
+      setDeviceHeading(normalizeAngle(snapshot.heading));
       fieldOrientationRef.current = {
         physicalBearing: cumquatCameraForwardBearing(snapshot.orientation),
         rawQuaternion: snapshot.rawOrientation,
@@ -734,9 +727,9 @@ export default function ARBetaNativeOverlayView() {
             // quaternion. Later compass readings remain HUD-only.
             initialHeadingDegrees:
               snapshot.headingAccuracy >= 2
-                ? cameraHeading
+                ? normalizeAngle(snapshot.heading)
                 : undefined,
-            headingDegrees: cameraHeading,
+            headingDegrees: snapshot.heading,
             pitchDegrees: 0,
             rollDegrees: 0,
             viewportWidth: currentViewport.width,
