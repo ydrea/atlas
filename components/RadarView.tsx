@@ -51,6 +51,7 @@ import type {BinaryPOI} from "@/data/binaryDataLoader";
 import {loadPOIsFromAsset} from "@/data/binaryDataLoader";
 import poiBinaryAsset from "@/data/pois.json.bin";
 import {RubberBandVisualFeedback} from "@/ui/RubberBandVisualFeedback";
+import {Tlog} from "@/utils/tlog";
 
 const DATASET_RADIUS_METERS = AR_CONSTANTS.DISTANCE.MAX;
 const DEFAULT_STATE: GestureState = {
@@ -144,6 +145,7 @@ export default function RadarView() {
   const engineRef = useRef<ReturnType<typeof CumquatEngine.create> | null>(null);
   const gestureStateRef = useRef(DEFAULT_STATE);
   const focusedRef = useRef(false);
+  const nativeFrameLoggedRef = useRef(false);
 
   const gestureConfig = useMemo(() => {
     const config = cloneGestureConfig();
@@ -256,6 +258,7 @@ export default function RadarView() {
       engine.initialize(nativePOIs);
       engine.setViewState(toNativeViewState(gestureStateRef.current));
       engineRef.current = engine;
+      nativeFrameLoggedRef.current = false;
       setStatus("calibrating");
       setError(null);
     } catch (nativeError: unknown) {
@@ -329,6 +332,15 @@ export default function RadarView() {
         const frame = engineRef.current.getFrame();
         const nextOrientation = frame.orientation ?? null;
         const nextForwardBearing = frameForwardBearing(nextOrientation);
+
+        if (nextOrientation && !nativeFrameLoggedRef.current) {
+          nativeFrameLoggedRef.current = true;
+          Tlog("[RADAR NATIVE FRAME]", {
+            convention: nextOrientation.convention,
+            quaternion: nextOrientation.quaternion,
+            forwardBearing: nextForwardBearing,
+          });
+        }
 
         setSequence(frame.sequence);
         setOrientation(nextOrientation);
