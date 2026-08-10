@@ -64,19 +64,18 @@ function getCompassCalibrationPercent(accuracy: number): number {
  * Converts Expo Location's portrait-top compass azimuth into the physical
  * rear-camera bearing for the active screen orientation.
  *
- * Cumquat consumes this bearing once and pairs it with the game quaternion
- * from the same engine update. Subsequent magnetometer samples do not steer
- * the projection.
+ * Compass accuracy is informational only: a finite heading is immediately
+ * usable. Cumquat consumes this bearing once and pairs it with the game
+ * quaternion from the same engine update. Subsequent magnetometer samples do
+ * not steer the projection.
  */
 function getCompassCameraHeading(
   snapshot: Pick<
     SensorSnapshot,
-    "heading" | "headingAccuracy" | "screenOrientationDegrees"
+    "heading" | "screenOrientationDegrees"
   >,
 ): number | null {
-  if (snapshot.headingAccuracy < 2 || !Number.isFinite(snapshot.heading)) {
-    return null;
-  }
+  if (!Number.isFinite(snapshot.heading)) return null;
 
   return normalizeHeading(
     snapshot.heading + snapshot.screenOrientationDegrees,
