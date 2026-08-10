@@ -1,9 +1,8 @@
 import {useLanguage} from "@/contexts/LanguageContext";
 import {
-  getCompassCalibrationPercent,
+  getCompassCameraHeading,
   sensorHub,
 } from "@/cumquat/sensors";
-import type {CompassAccuracy} from "@/cumquat/types";
 import {usePermissions} from "@/hooks/usePermissions";
 import {router} from "expo-router";
 import {useCallback, useEffect, useState} from "react";
@@ -31,12 +30,7 @@ export default function IndexScreen() {
   const [permissionsReady, setPermissionsReady] = useState(false);
   const [ready, setReady] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
-  const [heading, setHeading] = useState(0);
-  const [headingAccuracy, setHeadingAccuracy] =
-    useState<CompassAccuracy>(0);
-
-  const calibrationPercent =
-    getCompassCalibrationPercent(headingAccuracy);
+  const [cameraHeading, setCameraHeading] = useState(0);
 
   const prepareAR = useCallback(async () => {
     setPermissionsReady(false);
@@ -82,8 +76,10 @@ export default function IndexScreen() {
 
     const updateCompassState = () => {
       const snapshot = sensorHub.getSnapshot();
-      setHeading(snapshot.heading);
-      setHeadingAccuracy(snapshot.headingAccuracy);
+      const nextCameraHeading = getCompassCameraHeading(snapshot);
+      if (nextCameraHeading !== null) {
+        setCameraHeading(nextCameraHeading);
+      }
     };
 
     updateCompassState();
@@ -124,15 +120,8 @@ export default function IndexScreen() {
     <View style={styles.container}>
       <View style={styles.textGroup}>
         <Text style={styles.calibrationText}>
-          {translate("compassCalibration")}: {calibrationPercent}% (
-          {heading.toFixed(0)}°)
+          Camera bearing: {cameraHeading.toFixed(0)}°
         </Text>
-
-        {ready && headingAccuracy < 2 ? (
-          <Text style={styles.calibrationHint}>
-            Move the phone in a figure eight
-          </Text>
-        ) : null}
       </View>
 
       {!permissionsReady && (
@@ -230,11 +219,6 @@ const styles = StyleSheet.create({
   calibrationText: {
     color: "white",
     fontSize: 16,
-  },
-  calibrationHint: {
-    marginTop: 6,
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 12,
   },
   permissionPanel: {
     width: "80%",
