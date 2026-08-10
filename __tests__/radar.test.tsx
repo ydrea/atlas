@@ -126,11 +126,16 @@ describe("RadarView", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     radarTick = null;
+    const realSetInterval = global.setInterval.bind(global);
     intervalSpy = jest
       .spyOn(global, "setInterval")
-      .mockImplementation((callback) => {
-        radarTick = callback as () => void;
-        return 1 as unknown as ReturnType<typeof setInterval>;
+      .mockImplementation((callback, delay, ...args) => {
+        if (delay === 100) {
+          radarTick = callback as () => void;
+          return 1 as unknown as ReturnType<typeof setInterval>;
+        }
+
+        return realSetInterval(callback, delay, ...args);
       });
   });
 
@@ -142,8 +147,10 @@ describe("RadarView", () => {
     const view = await render(<RadarView />);
 
     await waitFor(() => expect(mockEngine.initialize).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(radarTick).not.toBeNull());
     await act(async () => {
-      radarTick?.();
+      if (!radarTick) throw new Error("Radar polling callback was not registered");
+      radarTick();
     });
 
     expect(mockEngine.update).toHaveBeenCalledWith(
