@@ -3,6 +3,7 @@ import {DeviceMotion} from "expo-sensors";
 
 import {
   getCompassCalibrationPercent,
+  getCompassCameraHeading,
   SensorStartError,
   sensorHub,
 } from "@/cumquat/sensors";
@@ -107,6 +108,35 @@ describe("SensorHub compass integration", () => {
     expect(getCompassCalibrationPercent(2)).toBe(67);
   });
 
+  test.each([
+    [299, 90, 29],
+    [6, 0, 6],
+    [6, -90, 276],
+    [350, 180, 170],
+  ])(
+    "converts compass %s° at screen rotation %s° to camera bearing %s°",
+    (heading, screenOrientationDegrees, expected) => {
+      expect(
+        getCompassCameraHeading({
+          heading,
+          headingAccuracy: 2,
+          screenOrientationDegrees:
+            screenOrientationDegrees as 0 | 90 | 180 | -90,
+        }),
+      ).toBe(expected);
+    },
+  );
+
+  test("uses a finite compass heading regardless of accuracy grade", () => {
+    expect(
+      getCompassCameraHeading({
+        heading: 281,
+        headingAccuracy: 1,
+        screenOrientationDegrees: 90,
+      }),
+    ).toBe(11);
+  });
+
   test("stores the live DeviceMotion screen orientation", async () => {
     await sensorHub.start();
 
@@ -149,6 +179,29 @@ describe("SensorHub compass integration", () => {
       trueHeading: null,
       headingAccuracy: 1,
     });
+  });
+
+  test("invalidates stale calibration when sensors stop", async () => {
+    await sensorHub.start();
+    emitHeading?.({
+      accuracy: 3,
+      magHeading: 270,
+      trueHeading: 270,
+    });
+
+    expect(sensorHub.getSnapshot().headingAccuracy).toBe(3);
+
+    sensorHub.stop();
+
+    expect(sensorHub.getSnapshot()).toMatchObject({
+      heading: Number.NaN,
+      magneticHeading: Number.NaN,
+      trueHeading: null,
+      headingAccuracy: 0,
+    });
+    expect(
+      getCompassCameraHeading(sensorHub.getSnapshot()),
+    ).toBeNull();
   });
 
   test("stops the heading subscription", async () => {

@@ -60,6 +60,28 @@ function getCompassCalibrationPercent(accuracy: number): number {
   return Math.round((normalizeHeadingAccuracy(accuracy) / 3) * 100);
 }
 
+/**
+ * Converts Expo Location's portrait-top compass azimuth into the physical
+ * rear-camera bearing for the active screen orientation.
+ *
+ * Compass accuracy is informational only: a finite heading is immediately
+ * usable. Cumquat consumes this bearing once and pairs it with the game
+ * quaternion from the same engine update. Subsequent magnetometer samples do
+ * not steer the projection.
+ */
+function getCompassCameraHeading(
+  snapshot: Pick<
+    SensorSnapshot,
+    "heading" | "headingAccuracy" | "screenOrientationDegrees"
+  >,
+): number | null {
+  if (!Number.isFinite(snapshot.heading)) return null;
+
+  return normalizeHeading(
+    snapshot.heading + snapshot.screenOrientationDegrees,
+  );
+}
+
 // ============ QUATERNION MATH ============
 
 function inverse(q: Quat): Quat {
@@ -101,7 +123,7 @@ class SensorHub {
     elevation: 0,
     orientation: {x: 0, y: 0, z: 0, w: 1},
     screenOrientationDegrees: 0,
-    heading: 0,
+    heading: Number.NaN,
     headingAccuracy: 0,
     magneticHeading: 0,
     trueHeading: null,
@@ -164,6 +186,13 @@ class SensorHub {
     this.deviceMotionSub = null;
     this.locationWatch = null;
     this.headingWatch = null;
+    // Never pair a newly-created native engine with a compass sample from a
+    // previous sensor session. Accuracy is informational, but the heading
+    // itself must come from a fresh callback in the current sensor session.
+    this.snapshot.heading = Number.NaN;
+    this.snapshot.magneticHeading = Number.NaN;
+    this.snapshot.trueHeading = null;
+    this.snapshot.headingAccuracy = 0;
     nativeProjectionDebug.dispose();
   }
 
@@ -592,4 +621,5 @@ export {
   rotateVector,
   calculateBearing,
   getCompassCalibrationPercent,
+  getCompassCameraHeading,
 };

@@ -129,6 +129,11 @@ jest.mock("@/cumquat/sensors", () => {
     geoToENU: jest.fn(() => ({ x: 0, y: 0, z: -10 })),
     rotateVector: jest.fn((vector) => vector),
     calculateBearing: jest.fn(() => 0),
+    getCompassCameraHeading: jest.fn(
+      (snapshot) =>
+        ((snapshot.heading + snapshot.screenOrientationDegrees) % 360 + 360) %
+        360,
+    ),
     projectToScreenWithClipping: jest.fn(() => ({
       x: 100,
       y: 100,
@@ -212,7 +217,8 @@ describe("beta ARView", () => {
     await waitFor(() => {
       expect(mockNativeEngine.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          headingDegrees: 225,
+          initialHeadingDegrees: 135,
+          headingDegrees: 135,
           location: expect.objectContaining({
             latitude: 45.8,
             longitude: 15.96,
@@ -243,7 +249,7 @@ describe("beta ARView", () => {
     await waitFor(() => {
       expect(mockNativeEngine.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          headingDegrees: 225,
+          headingDegrees: 135,
           location: expect.objectContaining({
             latitude: 45.8,
             longitude: 15.96,

@@ -43,11 +43,15 @@ import {
   isInsideFOV,
   projectRadarPoint,
 } from "@/cumquat/radarMath";
-import {sensorHub} from "@/cumquat/sensors";
+import {
+  getCompassCameraHeading,
+  sensorHub,
+} from "@/cumquat/sensors";
 import type {BinaryPOI} from "@/data/binaryDataLoader";
 import {loadPOIsFromAsset} from "@/data/binaryDataLoader";
 import poiBinaryAsset from "@/data/pois.json.bin";
 import {RubberBandVisualFeedback} from "@/ui/RubberBandVisualFeedback";
+import {Tlog} from "@/utils/tlog";
 
 const DATASET_RADIUS_METERS = AR_CONSTANTS.DISTANCE.MAX;
 const DEFAULT_STATE: GestureState = {
@@ -57,7 +61,7 @@ const DEFAULT_STATE: GestureState = {
   fov: AR_CONSTANTS.FOV.DEFAULT,
 };
 
-type RadarStatus = "loading" | "calibrating" | "ready" | "error";
+type RadarStatus = "loading" | "starting" | "ready" | "error";
 
 type RadarBlip = {
   source: BinaryPOI;
@@ -140,6 +144,7 @@ export default function RadarView() {
   const engineRef = useRef<ReturnType<typeof CumquatEngine.create> | null>(null);
   const gestureStateRef = useRef(DEFAULT_STATE);
   const focusedRef = useRef(false);
+  const nativeFrameLoggedRef = useRef(false);
 
   const gestureConfig = useMemo(() => {
     const config = cloneGestureConfig();
@@ -252,7 +257,8 @@ export default function RadarView() {
       engine.initialize(nativePOIs);
       engine.setViewState(toNativeViewState(gestureStateRef.current));
       engineRef.current = engine;
-      setStatus("calibrating");
+      nativeFrameLoggedRef.current = false;
+      setStatus("starting");
       setError(null);
     } catch (nativeError: unknown) {
       setStatus("error");
@@ -301,6 +307,8 @@ export default function RadarView() {
       if (snapshot.lat === 0 && snapshot.lon === 0) return;
 
       try {
+        const compassCameraHeading = getCompassCameraHeading(snapshot);
+
         engineRef.current.update({
           timestampNs: snapshot.timestamp * 1_000_000,
           location: {
@@ -310,9 +318,8 @@ export default function RadarView() {
           },
           orientationQuaternion: snapshot.orientation,
           // Paired once by Cumquat; later heading changes cannot steer radar.
-          initialHeadingDegrees:
-            snapshot.headingAccuracy >= 2 ? snapshot.heading : undefined,
-          headingDegrees: snapshot.heading,
+          initialHeadingDegrees: compassCameraHeading ?? undefined,
+          headingDegrees: compassCameraHeading ?? snapshot.heading,
           pitchDegrees: 0,
           rollDegrees: 0,
           viewportWidth: Math.max(1, diameter),
@@ -323,17 +330,29 @@ export default function RadarView() {
         const nextOrientation = frame.orientation ?? null;
         const nextForwardBearing = frameForwardBearing(nextOrientation);
 
+        if (nextOrientation && !nativeFrameLoggedRef.current) {
+          nativeFrameLoggedRef.current = true;
+          Tlog("[RADAR NATIVE FRAME]", {
+            convention: nextOrientation.convention,
+            quaternion: nextOrientation.quaternion,
+            forwardBearing: nextForwardBearing,
+          });
+        }
+
         setSequence(frame.sequence);
         setOrientation(nextOrientation);
 
-        if (nextForwardBearing === null) {
-          setStatus("calibrating");
-          setProjectedPOIs([]);
+        const resolvedForwardBearing =
+          nextForwardBearing ?? compassCameraHeading;
+
+        setProjectedPOIs(frame.projectedPOIs);
+
+        if (resolvedForwardBearing === null) {
+          setStatus("starting");
           return;
         }
 
-        setForwardBearing(nextForwardBearing);
-        setProjectedPOIs(frame.projectedPOIs);
+        setForwardBearing(resolvedForwardBearing);
         setStatus("ready");
         setError(null);
       } catch (nativeError: unknown) {
@@ -549,17 +568,17 @@ export default function RadarView() {
               />
             </Svg>
 
-            {status !== "ready" ? (
+            {status === "loading" || status === "error" ? (
               <View style={styles.radarMessage}>
-                {status === "loading" || status === "calibrating" ? (
+                {status === "loading" ? (
                   <ActivityIndicator color="#55ef98" />
                 ) : null}
                 <Text style={styles.radarMessageTitle}>
-                  {status === "error" ? "RADAR ERROR" : "CALIBRATING"}
+                  {status === "error" ? "RADAR ERROR" : "STARTING RADAR"}
                 </Text>
                 <Text style={styles.radarMessageText}>
                   {error ??
-                    "Hold the phone steady while Cumquat freezes its geographic orientation reference."}
+                    "Waiting for the first Cumquat orientation frame."}
                 </Text>
                 {status === "error" ? (
                   <Pressable

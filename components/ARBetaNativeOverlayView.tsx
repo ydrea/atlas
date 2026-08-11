@@ -18,14 +18,15 @@ import { GestureDetector } from "react-native-gesture-handler";
 import type { CameraType } from "expo-camera";
 
 import { AR_CONSTANTS } from "@/cumquat/constants";
-import { cumquatCameraForwardBearing } from "@/cumquat/northAlignedOrientation";
 import {
   calculateBearing,
+  getCompassCameraHeading,
   geoToENU,
   projectToScreenWithClipping,
   rotateVector,
   sensorHub,
 } from "@/cumquat/sensors";
+import { frameForwardBearing } from "@/cumquat/radarMath";
 import type { ScreenPosition, SensorSnapshot } from "@/cumquat/types";
 import { useARGestureController } from "@/cumquat/gestures/useARGestureController";
 import type {
@@ -692,9 +693,12 @@ export default function ARBetaNativeOverlayView() {
     (snapshot: SensorSnapshot) => {
       if (pois.length === 0) return;
 
-      setDeviceHeading(normalizeAngle(snapshot.heading));
+      const compassCameraHeading = getCompassCameraHeading(snapshot);
+      const displayedBearing =
+        compassCameraHeading ?? normalizeAngle(snapshot.heading);
+      setDeviceHeading(displayedBearing);
       fieldOrientationRef.current = {
-        physicalBearing: cumquatCameraForwardBearing(snapshot.orientation),
+        physicalBearing: compassCameraHeading,
         rawQuaternion: snapshot.rawOrientation,
         projectionQuaternion: snapshot.orientation,
         screenOrientation: snapshot.screenOrientationDegrees,
@@ -725,18 +729,22 @@ export default function ARBetaNativeOverlayView() {
             orientationQuaternion: snapshot.orientation,
             // Cumquat consumes this only once, paired with this exact motion
             // quaternion. Later compass readings remain HUD-only.
-            initialHeadingDegrees:
-              snapshot.headingAccuracy >= 2
-                ? normalizeAngle(snapshot.heading)
-                : undefined,
-            headingDegrees: snapshot.heading,
+            initialHeadingDegrees: compassCameraHeading ?? undefined,
+            headingDegrees: displayedBearing,
             pitchDegrees: 0,
             rollDegrees: 0,
             viewportWidth: currentViewport.width,
             viewportHeight: currentViewport.height,
           });
 
-          const nativeFrame = engine.getFrame().projectedPOIs;
+          const frame = engine.getFrame();
+          const anchoredBearing = frameForwardBearing(frame.orientation ?? null);
+          const nativeFrame = frame.projectedPOIs;
+
+          if (anchoredBearing !== null) {
+            setDeviceHeading(anchoredBearing);
+            fieldOrientationRef.current.physicalBearing = anchoredBearing;
+          }
 
           if (
             shouldCommitNativeFrame(
