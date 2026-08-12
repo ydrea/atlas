@@ -122,7 +122,7 @@ export default () => {
         "expo-splash-screen",
         {
           image: iconConfig.icon,
-          imageWidth: 500,
+          imageWidth: 190,
           resizeMode: "contain",
           backgroundColor: "#dfdfdf",
           dark: {
