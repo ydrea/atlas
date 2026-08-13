@@ -597,7 +597,7 @@ export default function RadarView() {
               styles.details,
               {
                 width: Math.min(260, width * 0.28),
-                minHeight: Math.min(270, height - 82),
+                minHeight: Math.min(270, height - 122),
               },
             ]}
           >
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   detailRow: {flexDirection: "row", justifyContent: "space-between", paddingVertical: 3},
   detailKey: {color: "#5e8a70", fontSize: 11},
   detailValue: {color: "#d8f8e5", fontSize: 11, fontVariant: ["tabular-nums"]},
-  emptyDetails: {color: "#70917d", fontSize: 13, lineHeight: 19, marginTop: 16},
+  emptyDetails: {color: "#70917d", fontSize: 11, lineHeight: 13, marginTop: 5},
   instructions: {marginTop: "auto", paddingTop: 18},
   instructionsTitle: {color: "#4d8d68", fontSize: 8, letterSpacing: 1.1, marginBottom: 2},
   instructionsText: {color: "#a0c9b0", fontSize: 10, lineHeight: 13},
