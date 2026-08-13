@@ -122,6 +122,7 @@ export default function IndexScreen() {
         <Text style={styles.calibrationText}>
           Camera bearing: {cameraHeading.toFixed(0)}°
         </Text>
+        <Text style={styles.calibrationText}>∞</Text>
       </View>
 
       {!permissionsReady && (
