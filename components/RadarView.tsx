@@ -708,7 +708,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#07130e",
   },
-  detailsLabel: {color: "#4d8d68", fontSize: 9, letterSpacing: 1.4},
+  detailsLabel: {color: "#4d8d68", fontSize: 9, letterSpacing: 1.1},
   targetName: {color: "#f2fff7", fontSize: 20, fontWeight: "700", marginTop: 10},
   targetDistance: {color: "#50ed94", fontSize: 24, fontWeight: "300", marginBottom: 10},
   detailRow: {flexDirection: "row", justifyContent: "space-between", paddingVertical: 3},
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   detailValue: {color: "#d8f8e5", fontSize: 11, fontVariant: ["tabular-nums"]},
   emptyDetails: {color: "#70917d", fontSize: 13, lineHeight: 19, marginTop: 16},
   instructions: {marginTop: "auto", paddingTop: 18},
-  instructionsTitle: {color: "#4d8d68", fontSize: 8, letterSpacing: 1.1, marginBottom: 5},
-  instructionsText: {color: "#a0c9b0", fontSize: 11, lineHeight: 17},
+  instructionsTitle: {color: "#4d8d68", fontSize: 8, letterSpacing: 1.1, marginBottom: 2},
+  instructionsText: {color: "#a0c9b0", fontSize: 10, lineHeight: 13},
   orientationContract: {color: "#315e44", fontSize: 8, marginTop: 10},
 });
